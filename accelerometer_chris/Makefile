@@ -16,7 +16,7 @@ XC_PATH = "C:/Program Files (x86)/GNU Tools ARM Embedded/5.4 2016q3/bin/"
 # Serial port:
 # Linux users: the port will be something like /dev/ttyACM0
 # Windows users: the port will be something like COM4
-PORT=COM3
+PORT=COM5
 # Terminal emulator:
 # Linux: the terminal emulator is screen
 # Windows: the terminal emulator is putty (all lowercase)
