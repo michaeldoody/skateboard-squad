@@ -91,15 +91,16 @@ int main(void)
 	HWREG(GPIO_PORTD_BASE + GPIO_O_LOCK) = 0;
 
     //
-    // Configure the encoder 1 pins for use by the QEI block.
+    // Set what pins are PhA0, PhB0, and IDX0.
     //
     GPIOPinConfigure(GPIO_PD6_PHA0);
 	GPIOPinConfigure(GPIO_PD7_PHB0);
+    GPIOPinConfigure(GPIO_PD3_IDX0);
 
     //
-    // Set GPIO pins for QEI. PhA0 -> PD6, PhB0 ->PD7. I believe this sets the pull up and makes them inputs.
+    // Set GPIO pins for QEI. This sets them pull up and makes them inputs.
     //
-	GPIOPinTypeQEI(GPIO_PORTD_BASE, GPIO_PIN_6 |  GPIO_PIN_7);
+	GPIOPinTypeQEI(GPIO_PORTD_BASE, GPIO_PIN_6 |  GPIO_PIN_7 | GPIO_PIN_3);
 
     //
 	// Disable peripheral and int before configuration.
@@ -108,12 +109,12 @@ int main(void)
 	QEIIntDisable(QEI0_BASE, QEI_INTERROR | QEI_INTDIR | QEI_INTTIMER | QEI_INTINDEX);
 
     //
-	// Configure quadrature encoder, use an arbitrary top limit of 1000.
+	// Configure quadrature encoder.
     //
-	QEIConfigure(QEI0_BASE, (QEI_CONFIG_CAPTURE_A_B  | QEI_CONFIG_NO_RESET 	| QEI_CONFIG_QUADRATURE | QEI_CONFIG_NO_SWAP), 1024);  // why max 1024?? need to configure?
+	QEIConfigure(QEI0_BASE, (QEI_CONFIG_CAPTURE_A_B  | QEI_CONFIG_RESET_IDX | QEI_CONFIG_QUADRATURE | QEI_CONFIG_NO_SWAP), 1024);  // why max 1024?? need to configure?
 
     //
-	// Enable the quadrature encoder.
+	// Enable quadrature encoder.
     //
 	QEIEnable(QEI0_BASE);
 
