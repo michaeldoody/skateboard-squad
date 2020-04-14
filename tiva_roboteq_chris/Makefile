@@ -49,7 +49,6 @@ OUTDIR = build
 
 
 LDLIBS = -L$(DRIVERLIB_PATH) -ldriver
-LDLIBS += -L "C:\Program Files (x86)\GNU Tools ARM Embedded\5.4 2016q3\arm-none-eabi\lib\fpu" -lm -lc 
 
 # LD_SCRIPT: linker script
 LD_SCRIPT = $(MCU).ld
@@ -131,3 +130,4 @@ putty :
 .PHONY: screen
 screen :
 	$(TERMEMU) $(PORT) 115200
+

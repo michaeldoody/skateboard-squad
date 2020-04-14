@@ -4,6 +4,7 @@
 #include "basic_functions.h"
 #include "LSM9DS1.h"
 #include <math.h>
+
 uint8_t rev_data[10];
 int16_t gx, gy, gz; // x, y, and z axis readings of the gyroscope
 int16_t ax, ay, az; // x, y, and z axis readings of the accelerometer
@@ -25,6 +26,7 @@ void printAttitude(int ax, int ay, int az, int mx, int my, int mz);
  */
 int main(void)
 {
+	FPULazyStackingEnable();
 	SysCtlClockSet(SYSCTL_SYSDIV_5|SYSCTL_USE_PLL|SYSCTL_OSC_MAIN|SYSCTL_XTAL_16MHZ);
 
 	UART_init();

@@ -86,42 +86,42 @@ int main(void)
     //
     // Unlock GPIOD7 - Like PF0 its used for NMI - Without this step it doesn't work.
     //
-	HWREG(GPIO_PORTD_BASE + GPIO_O_LOCK) = GPIO_LOCK_KEY; // In Tiva include this is the same as "_DD" in older versions (0x4C4F434B)
-	HWREG(GPIO_PORTD_BASE + GPIO_O_CR) |= 0x80;
-	HWREG(GPIO_PORTD_BASE + GPIO_O_LOCK) = 0;
+  	HWREG(GPIO_PORTD_BASE + GPIO_O_LOCK) = GPIO_LOCK_KEY; // In Tiva include this is the same as "_DD" in older versions (0x4C4F434B)
+  	HWREG(GPIO_PORTD_BASE + GPIO_O_CR) |= 0x80;
+  	HWREG(GPIO_PORTD_BASE + GPIO_O_LOCK) = 0;
 
     //
     // Set what pins are PhA0, PhB0, and IDX0.
     //
     GPIOPinConfigure(GPIO_PD6_PHA0);
-	GPIOPinConfigure(GPIO_PD7_PHB0);
+  	GPIOPinConfigure(GPIO_PD7_PHB0);
     GPIOPinConfigure(GPIO_PD3_IDX0);
 
     //
     // Set GPIO pins for QEI. This sets them pull up and makes them inputs.
     //
-	GPIOPinTypeQEI(GPIO_PORTD_BASE, GPIO_PIN_6 |  GPIO_PIN_7 | GPIO_PIN_3);
+  	GPIOPinTypeQEI(GPIO_PORTD_BASE, GPIO_PIN_6 |  GPIO_PIN_7 | GPIO_PIN_3);
 
     //
-	// Disable peripheral and int before configuration.
+  	// Disable peripheral and int before configuration.
     //
-	QEIDisable(QEI0_BASE);
-	QEIIntDisable(QEI0_BASE, QEI_INTERROR | QEI_INTDIR | QEI_INTTIMER | QEI_INTINDEX);
+  	QEIDisable(QEI0_BASE);
+  	QEIIntDisable(QEI0_BASE, QEI_INTERROR | QEI_INTDIR | QEI_INTTIMER | QEI_INTINDEX);
 
     //
-	// Configure quadrature encoder.
+  	// Configure quadrature encoder.
     //
-	QEIConfigure(QEI0_BASE, (QEI_CONFIG_CAPTURE_A_B  | QEI_CONFIG_RESET_IDX | QEI_CONFIG_QUADRATURE | QEI_CONFIG_NO_SWAP), 1024);  // why max 1024?? need to configure?
+  	QEIConfigure(QEI0_BASE, (QEI_CONFIG_CAPTURE_A_B  | QEI_CONFIG_RESET_IDX | QEI_CONFIG_QUADRATURE | QEI_CONFIG_NO_SWAP), 1024);  // why max 1024?? need to configure?
 
     //
-	// Enable quadrature encoder.
+  	// Enable quadrature encoder.
     //
-	QEIEnable(QEI0_BASE);
+  	QEIEnable(QEI0_BASE);
 
-    // 
-	// Set position to a middle value so we can see if things are working.
     //
-	QEIPositionSet(QEI0_BASE, 512);
+  	// Set position to a middle value so we can see if things are working.
+    //
+  	QEIPositionSet(QEI0_BASE, 512);
 
     //
     // Initialize the UART.
@@ -142,6 +142,6 @@ int main(void)
             UARTprintf("pos = %d\n", pos);
 
         }
-        
+
     return 0;
 }
