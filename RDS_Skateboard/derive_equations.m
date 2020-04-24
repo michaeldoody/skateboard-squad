@@ -25,8 +25,8 @@ fprintf('\tInitializing generalized coordinates, velocities, accelerations, and 
 % boardX: position of the skateboard CoM along the x-axis
 % boardY: position of the skateboard CoM along the y-axis
 % boardTheta: angle of the skateboard CoM wrt the x-axis
-% bottomLinkTheta: angle of the bottom link, ccw+ w.r.t. skateboard angle
-% topLinkTheta: angle of the pendulum, ccw+ w.r.t. top link angle
+% bottomLinkTheta: angle of the bottom link, ccw+ w.r.t. skateboard
+% topLinkTheta: angle of the top link, ccw+ w.r.t. bottom link
 
 syms boardX boardY boardTheta bottomLinkTheta topLinkTheta real
 q = [boardX; boardY; boardTheta; bottomLinkTheta; topLinkTheta];
@@ -35,8 +35,8 @@ q = [boardX; boardY; boardTheta; bottomLinkTheta; topLinkTheta];
 % boardDX: velocity of the skateboard CoM along the x-axis
 % boardDY: velocity of the skateboard CoM along the y-axis
 % boardDTheta: rate of change of angle of the skateboard CoM wrt the x-axis
-% bottomLinkDTheta: angular velocity of angle of the bottom link, ccw+ w.r.t. skateboard angle
-% topLinkDTheta: angular velocity of angle of the pendulum, ccw+ w.r.t. top link angle
+% bottomLinkDTheta: angular velocity of angle of the bottom link, ccw+ w.r.t. skateboard
+% topLinkDTheta: angular velocity of angle of the top link, ccw+ w.r.t. bottom link
 syms boardDX boardDY boardDTheta bottomLinkDTheta topLinkDTheta real
 dq = [boardDX; boardDY; boardDTheta; bottomLinkDTheta; topLinkDTheta];
 
@@ -45,8 +45,8 @@ syms boardDDX boardDDY boardDDTheta bottomLinkDDTheta topLinkDDTheta real
 % boardDX: acceleration of the skateboard CoM along the x-axis
 % boardDY: acceleration of the skateboard CoM along the y-axis
 % boardDTheta: angular acceleration of angle of the skateboard CoM wrt the x-axis
-% bottomLinkDTheta: angular acceleration of angle of the bottom link, ccw+ w.r.t. skateboard angle
-% topLinkDTheta: angular acceleration of angle of the pendulum, ccw+ w.r.t. top link angle
+% bottomLinkDTheta: angular acceleration of angle of the bottom link, ccw+ w.r.t. skateboard
+% topLinkDTheta: angular acceleration of angle of the top link, ccw+ w.r.t. bottom link
 ddq = [boardDDX; boardDDY; boardDDTheta; bottomLinkDDTheta; topLinkDDTheta];
 
 % Generalized forces:
@@ -112,15 +112,15 @@ fprintf('\t...done.\n');
 fprintf('\tGenerating forward kinematics equations...\n');
 
 % compute the (x,y) location of the pendulum's center of mass:
-bottomLinkXCoM = boardX + bottomLinkRCoM * sin(bottomLinkTheta); % TODO
-bottomLinkYCoM = boardY + bottomLinkRCoM * cos(bottomLinkTheta); % TODO
+bottomLinkXCoM = boardX + bottomLinkRCoM * sin(bottomLinkTheta); 
+bottomLinkYCoM = boardY + bottomLinkRCoM * cos(bottomLinkTheta); 
 
 topLinkXCoM = boardX + bottomLinkHeight * sin(bottomLinkTheta) + topLinkRCoM * sin(topLinkTheta); 
 topLinkYCoM = boardY + bottomLinkHeight * cos(bottomLinkTheta) + topLinkRCoM * cos(topLinkTheta);
 
 % compute the (x,y) location of the robot's tip:
-robotTipX = boardX + bottomLinkHeight * sin(bottomLinkTheta) + topLinkHeight * sin(topLinkTheta); % TODO
-robotTipY = boardY + bottomLinkHeight * cos(bottomLinkTheta) + topLinkHeight * cos(topLinkTheta); % TODO
+robotTipX = boardX + bottomLinkHeight * sin(bottomLinkTheta) + topLinkHeight * sin(topLinkTheta); 
+robotTipY = boardY + bottomLinkHeight * cos(bottomLinkTheta) + topLinkHeight * cos(topLinkTheta); 
 
 % create a 2x3 array to hold all forward kinematics (FK) outputs:
 FK = [boardX, bottomLinkXCoM, topLinkXCoM, robotTipX;

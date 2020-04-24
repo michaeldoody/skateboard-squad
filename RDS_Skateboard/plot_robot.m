@@ -44,7 +44,7 @@ parse(p, q, params, varargin{:});
 
 
 %% Compute the 4 corners of the cart, clockwise from top left corner
-% First compute the cart's home position (q(1) = 0):
+% First compute the board's home position (q(1) = 0):
 
 T_board =   [cos(q(3)), -sin(q(3)), q(1);
              sin(q(3)),  cos(q(3)), q(2);
@@ -165,26 +165,26 @@ topLink.curr.corners = T_topLink*topLink.home.corners;
 
 
 
-% %% Evaluate forward kinematics at points of interest
-% FK = fwd_kin(q,params);
-% 
-% % (x,y) location of cart CoM:
-% board.curr.com.x = FK(1,1);
-% board.curr.com.y = FK(2,1);
-% 
-% % (x,y) location of pendulum CoM:
-% bottomLink.curr.com.x = FK(1,2);
-% bottomLink.curr.com.y = FK(2,2);
-% 
-% % (x,y) location of pendulum tip:
-% bottomLink.curr.tip.x = FK(1,3);
-% bottomLink.curr.tip.y = FK(2,3);
-% 
-% %% Display the cart, pendulum, and the pendulum's CoM
-% if p.Results.new_fig
-%     figure;
-% end
-% 
+%% Evaluate forward kinematics at points of interest
+FK = fwd_kin(q,params);
+
+% (x,y) location of cart CoM:
+board.curr.com.x = FK(1,1);
+board.curr.com.y = FK(2,1);
+
+% (x,y) location of pendulum CoM:
+bottomLink.curr.com.x = FK(1,2);
+bottomLink.curr.com.y = FK(2,2);
+
+% (x,y) location of pendulum tip:
+bottomLink.curr.tip.x = FK(1,3);
+bottomLink.curr.tip.y = FK(2,3);
+
+%% Display the cart, pendulum, and the pendulum's CoM
+if p.Results.new_fig
+    figure;
+end
+
 fill(board.curr.corners(1,:),board.curr.corners(2,:),params.viz.colors.board);
 hold on;
 fill(bottomLink.curr.corners(1,:),bottomLink.curr.corners(2,:),params.viz.colors.bottomLink);
