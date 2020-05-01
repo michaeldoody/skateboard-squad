@@ -17,6 +17,8 @@
 %   extend it to visualizing other more complex robots.
 
 function plot_robot(q,params,varargin)
+
+global i
 %% Parse input arguments
 % Note: a simple robot plotting function doesn't need this, but I want to
 % write extensible code, so I'm using "varargin" which requires input
@@ -180,6 +182,26 @@ bottomLink.curr.com.y = FK(2,2);
 topLink.curr.com.x = FK(1,3);
 topLink.curr.com.y = FK(2,3);
 
+robot.curr.com.x = FK(1,4);
+robot.curr.com.y = FK(2,4);
+
+
+
+if (i == 0) 
+
+fprintf("current coordinates for skateboard corner are: (%f , %f).\n",...
+    board.curr.corners(1,1), board.curr.corners(1,2))
+
+fprintf("current coordinates for robot CoM corner are: (%f , %f).\n",...
+    robot.curr.com.x, robot.curr.com.y)
+
+i = 1;
+
+end
+
+
+
+
 
 %% Display the cart, pendulum, and the pendulum's CoM
 if p.Results.new_fig
@@ -196,7 +218,13 @@ plot(bottomLink.curr.com.x, bottomLink.curr.com.y,'o','MarkerSize',10,...
 hold on
 plot(topLink.curr.com.x, topLink.curr.com.y, 'o', 'MarkerSize', 10,...
     'MarkerFaceColor',params.viz.colors.topLinkCoM);
-hold off;
+hold on;
+plot(robot.curr.com.x, robot.curr.com.y, 'o', 'MarkerSize', 10,...
+    'MarkerFaceColor','cyan');
+hold off
+
+ 
+
 
 axis(params.viz.axis_lims);
 daspect([1 1 1]) % no distortion

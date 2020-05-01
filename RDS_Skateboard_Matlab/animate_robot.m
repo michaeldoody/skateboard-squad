@@ -41,6 +41,7 @@ addRequired(p,'cart_pend_params', ...
 addParameter(p, 'trace_board_com', false);
 addParameter(p, 'trace_bottomLink_com', false);
 addParameter(p, 'trace_topLink_com', false);
+addParameter(p, 'trace_robot_com', false);
 addParameter(p, 'video', false);
 
 
@@ -70,6 +71,9 @@ end
         
         topLink.curr.com.x = [];
         topLink.curr.com.y = [];
+        
+        robot.curr.com.x = [];
+        robot.curr.com.y = [];
     end
     
     for i = 1:size(q_list,2)
@@ -90,6 +94,9 @@ end
             % append (x,y) location of pendulum tip:
             topLink.curr.com.x = [topLink.curr.com.x,FK(1,3)];
             topLink.curr.com.y = [topLink.curr.com.y,FK(2,3)];
+            
+            robot.curr.com.x = [robot.curr.com.x,FK(1,4)];
+            robot.curr.com.y = [robot.curr.com.y,FK(2,4)];
             
             if p.Results.trace_board_com
                 hold on;
@@ -116,6 +123,15 @@ end
                     'MarkerSize',3,'LineWidth',2,...
                     'MarkerFaceColor',params.viz.colors.tracers.topLinkCoM,...
                     'MarkerEdgeColor',params.viz.colors.topLinkCoM);
+                hold off;
+            end
+            if p.Results.trace_robot_com
+                hold on;
+                plot(robot.curr.com.x,robot.curr.com.y,'o-',...
+                    'Color',params.viz.colors.tracers.robotCoM,...
+                    'MarkerSize',3,'LineWidth',2,...
+                    'MarkerFaceColor',params.viz.colors.tracers.topLinkCoM,...
+                    'MarkerEdgeColor',params.viz.colors.tracers.robotCoM);
                 hold off;
             end
         end

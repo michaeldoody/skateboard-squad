@@ -37,7 +37,7 @@ function params = initial_params
     
 % Top Link Parameters
 
-    params.topLinkMass = 1.498; % kg
+    params.topLinkMass = 2; % kg
     params.topLinkI = 0.0002; % REPLACE
     params.topLinkTheta = 0; % wrt the first link, with 0 being stright up (positive y)
     params.topLinkWidth = 0.085; % m, average of wide and narrow parts of top link
@@ -45,7 +45,7 @@ function params = initial_params
     params.topLinkXCoM = 0;
     params.topLinkYCoM = 0.137;
     
-    params.g = 9.8;
+    params.g = 0;
     
     params.sim.dt = 0.01;
     
@@ -57,6 +57,8 @@ function params = initial_params
     params.viz.colors.tracers.boardCoM = [1 1 0];
     params.viz.colors.tracers.bottomLinkCoM = [1 0 1];
     params.viz.colors.tracers.topLinkCoM = [0 1 1];
+    params.viz.colors.tracers.robotCoM = 'cyan';
+
     params.viz.axis_lims = [-5,5,-5,5];
   
 end
