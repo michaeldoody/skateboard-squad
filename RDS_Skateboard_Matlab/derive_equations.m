@@ -83,6 +83,9 @@ syms bottomLinkRCoM topLinkRCoM real
 % Dimensions: length of the bottom, top link:
 syms bottomLinkHeight topLinkHeight real
 
+% Location of the overall center of mass of the robot
+syms robotXCoM robotYCoM real
+
 % Note: the dynamics don't care where the pendulum tip is (only the 
 % pendulum CoM), but keeping track of the tip will be helpful for 
 % visualizing the robot (could also be helpful for some control tasks).
@@ -126,9 +129,14 @@ topLinkYCoM = boardY + bottomLinkHeight * cos(boardTheta + bottomLinkTheta) + to
 robotTipX = boardX + bottomLinkHeight * sin(boardTheta + bottomLinkTheta + pi) + topLinkHeight * sin(boardTheta + bottomLinkTheta + topLinkTheta + pi); 
 robotTipY = boardY + bottomLinkHeight * cos(boardTheta + bottomLinkTheta) + topLinkHeight * cos(boardTheta + bottomLinkTheta + topLinkTheta);
 
-% create a 2x3 array to hold all forward kinematics (FK) outputs:
-FK = [boardX, bottomLinkXCoM, topLinkXCoM, robotTipX;
-      boardY, bottomLinkYCoM, topLinkYCoM, robotTipY];
+% robot's CoM
+
+robotXCoM = (boardX * boardMass + bottomLinkXCoM * bottomLinkMass + topLinkXCoM * topLinkMass)/(boardMass + bottomLinkMass + topLinkMass);
+robotYCoM = (boardY * boardMass + bottomLinkYCoM * bottomLinkMass + topLinkYCoM * topLinkMass)/(boardMass + bottomLinkMass + topLinkMass);
+
+% create a 2x4 array to hold all forward kinematics (FK) outputs:
+FK = [boardX, bottomLinkXCoM, topLinkXCoM, robotXCoM, robotTipX;
+      boardY, bottomLinkYCoM, topLinkYCoM, robotYCoM, robotTipY];
 
 % generate a MATLAB function to compute all the FK outputs:
 matlabFunction(FK,'File','autogen_fwd_kin');
