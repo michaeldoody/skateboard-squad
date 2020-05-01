@@ -33,14 +33,14 @@ p = inputParser;
 % Step 2: create the parsing schema:
 %   2a: required inputs:
 addRequired(p,'cart_pend_config', ...
-    @(q_list) isnumeric(q_list) && size(q_list,1)==2);
+    @(q_list) isnumeric(q_list) && size(q_list,1)==5);
 addRequired(p,'cart_pend_params', ...
     @(params) ~isempty(params));
 %   2b: optional inputs:
 %       optional name-value pairs to trace different parts of the robot:
-addParameter(p, 'trace_cart_com', false);
-addParameter(p, 'trace_pend_com', false);
-addParameter(p, 'trace_pend_tip', false);
+addParameter(p, 'trace_board_com', false);
+addParameter(p, 'trace_bottomLink_com', false);
+addParameter(p, 'trace_topLink_com', false);
 addParameter(p, 'video', false);
 
 
@@ -49,72 +49,73 @@ parse(p, q_list, params, varargin{:});
 
 fig_handle = figure('Renderer', 'painters', 'Position', [10 10 900 600]);
 
-if (p.Results.trace_cart_com || p.Results.trace_pend_com ...
-        || p.Results.trace_pend_tip)
+if (p.Results.trace_board_com || p.Results.trace_bottomLink_com ...
+        || p.Results.trace_topLink_com)
     tracing = true;
 else
     tracing = false;
 end
     
     if p.Results.video
-        v = VideoWriter('swingup.avi');
+        v = VideoWriter('skateboard.avi');
         open(v);
     end
     
     if tracing
-        cart.curr.com.x = [];
-        cart.curr.com.y = [];
+        board.curr.com.x = [];
+        board.curr.com.y = [];
         
-        pend.curr.com.x = [];
-        pend.curr.com.y = [];
+        bottomLink.curr.com.x = [];
+        bottomLink.curr.com.y = [];
         
-        pend.curr.tip.x = [];
-        pend.curr.tip.y = [];
+        topLink.curr.com.x = [];
+        topLink.curr.com.y = [];
     end
     
     for i = 1:size(q_list,2)
         plot_robot(q_list(:,i),params,'new_fig',false);
+       
         
         if tracing
             FK = fwd_kin(q_list(:,i),params);
 
             % append (x,y) location of cart CoM:
-            cart.curr.com.x = [cart.curr.com.x, FK(1,1)];
-            cart.curr.com.y = [cart.curr.com.y, FK(2,1)];
+            board.curr.com.x = [board.curr.com.x, FK(1,1)];
+            board.curr.com.y = [board.curr.com.y, FK(2,1)];
 
             % append (x,y) location of pendulum CoM:
-            pend.curr.com.x = [pend.curr.com.x,FK(1,2)];
-            pend.curr.com.y = [pend.curr.com.y,FK(2,2)];
+            bottomLink.curr.com.x = [bottomLink.curr.com.x,FK(1,2)];
+            bottomLink.curr.com.y = [bottomLink.curr.com.y,FK(2,2)];
 
             % append (x,y) location of pendulum tip:
-            pend.curr.tip.x = [pend.curr.tip.x,FK(1,3)];
-            pend.curr.tip.y = [pend.curr.tip.y,FK(2,3)];
+            topLink.curr.com.x = [topLink.curr.com.x,FK(1,3)];
+            topLink.curr.com.y = [topLink.curr.com.y,FK(2,3)];
             
-            if p.Results.trace_cart_com
+            if p.Results.trace_board_com
                 hold on;
-                plot(cart.curr.com.x,cart.curr.com.y,'o-',...
-                    'Color',params.viz.colors.tracers.cart_com,...
+                plot(board.curr.com.x,board.curr.com.y,'o-',...
+                    'Color',params.viz.colors.tracers.boardCoM,...
                     'MarkerSize',3,'LineWidth',2,...
-                    'MarkerFaceColor',params.viz.colors.tracers.cart_com,...
-                    'MarkerEdgeColor',params.viz.colors.tracers.cart_com);
+                    'MarkerFaceColor',params.viz.colors.tracers.boardCoM,...
+                    'MarkerEdgeColor',params.viz.colors.tracers.boardCoM);
                 hold off;
             end
-            if p.Results.trace_pend_com
+            if p.Results.trace_bottomLink_com
                 hold on;
-                plot(pend.curr.com.x,pend.curr.com.y,'o-',...
-                    'Color',params.viz.colors.tracers.pend_com,...
+                plot(bottomLink.curr.com.x,bottomLink.curr.com.y,'o-',...
+                    'Color',params.viz.colors.tracers.bottomLinkCoM,...
                     'MarkerSize',3,'LineWidth',2,...
-                    'MarkerFaceColor',params.viz.colors.tracers.pend_com,...
-                    'MarkerEdgeColor',params.viz.colors.tracers.pend_com);
+                    'MarkerFaceColor',params.viz.colors.tracers.bottomLinkCoM,...
+                    'MarkerEdgeColor',params.viz.colors.tracers.bottomLinkCoM);
                 hold off;
             end
-            if p.Results.trace_pend_tip
+            if p.Results.trace_topLink_com
                 hold on;
-                plot(pend.curr.tip.x,pend.curr.tip.y,'o-',...
-                    'Color',params.viz.colors.tracers.pend_tip,...
+                plot(topLink.curr.com.x,topLink.curr.com.y,'o-',...
+                    'Color',params.viz.colors.tracers.topLinkCoM,...
                     'MarkerSize',3,'LineWidth',2,...
-                    'MarkerFaceColor',params.viz.colors.tracers.pend_tip,...
-                    'MarkerEdgeColor',params.viz.colors.tracers.pend_tip);
+                    'MarkerFaceColor',params.viz.colors.tracers.topLinkCoM,...
+                    'MarkerEdgeColor',params.viz.colors.topLinkCoM);
                 hold off;
             end
         end

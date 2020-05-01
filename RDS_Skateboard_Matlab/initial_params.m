@@ -57,6 +57,6 @@ function params = initial_params
     params.viz.colors.tracers.boardCoM = [1 1 0];
     params.viz.colors.tracers.bottomLinkCoM = [1 0 1];
     params.viz.colors.tracers.topLinkCoM = [0 1 1];
-    params.viz.axis_lims = [-.5,.5,-.5,.5];
+    params.viz.axis_lims = [-5,5,-5,5];
   
 end
