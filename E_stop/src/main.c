@@ -1,165 +1,103 @@
-//*****************************************************************************
-//
-// main.c - Simple hello world example.
-//
-// Copyright (c) 2012-2017 Texas Instruments Incorporated.  All rights reserved.
-// Software License Agreement
-//
-// Texas Instruments (TI) is supplying this software for use solely and
-// exclusively on TI's microcontroller products. The software is owned by
-// TI and/or its suppliers, and is protected under applicable copyright
-// laws. You may not combine this software with "viral" open-source
-// software in order to form a larger program.
-//
-// THIS SOFTWARE IS PROVIDED "AS IS" AND WITH ALL FAULTS.
-// NO WARRANTIES, WHETHER EXPRESS, IMPLIED OR STATUTORY, INCLUDING, BUT
-// NOT LIMITED TO, IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
-// A PARTICULAR PURPOSE APPLY TO THIS SOFTWARE. TI SHALL NOT, UNDER ANY
-// CIRCUMSTANCES, BE LIABLE FOR SPECIAL, INCIDENTAL, OR CONSEQUENTIAL
-// DAMAGES, FOR ANY REASON WHATSOEVER.
-//
-// This is part of revision 2.1.4.178 of the EK-TM4C123GXL Firmware Package.
-//
-//*****************************************************************************
-
-#include <math.h>
-#include <stdbool.h>
 #include <stdint.h>
-#include <stdio.h>
-//#include <string.h>
+#include <stdbool.h>
 
-#include "inc/hw_memmap.h"
-#include "inc/hw_types.h"
-#include "driverlib/debug.h"
-#include "driverlib/fpu.h"
-#include "driverlib/gpio.h"
 #include "driverlib/pin_map.h"
-#include "driverlib/rom.h"
 #include "driverlib/sysctl.h"
+#include "driverlib/gpio.c"
 #include "driverlib/uart.h"
+#include "driverlib/timer.h"
 #include "utils/uartstdio.h"
-#include "inc/simulink_comms.h"
-//*****************************************************************************
-//
-//! A very simple ``hello world'' example.  It simply displays ``Hello World!''
-//! on the UART and is a starting point for more complicated applications.
-//!
-//! UART0, connected to the Virtual Serial Port and running at
-//! 115,200, 8-N-1, is used to display messages from this application.
-//
-//*****************************************************************************
 
-//*****************************************************************************
-//
-// The error routine that is called if the driver library encounters an error.
-//
-//*****************************************************************************
+#define LED_PERIPH SYSCTL_PERIPH_GPIOF
+#define LED_BASE GPIO_PORTF_BASE
+#define RED_LED GPIO_PIN_1
+#define BLUE_LED GPIO_PIN_2
+
+#define BUTTON_BASE GPIO_PORTF_BASE
+#define BUTTON GPIO_PIN_4
+#define BUTTON_INT INT_GPIOF
+#define BUTTON_INT_PIN GPIO_INT_PIN_4
+
+#define TIMER_PERIPH SYSCTL_PERIPH_TIMER0
+#define TIMER_BASE TIMER0_BASE
+#define TIMER TIMER_A
+#define TIMER_INT INT_TIMER0A
+#define TIMER_TIMEOUT_INT TIMER_TIMA_TIMEOUT
+
 #ifdef DEBUG
-void
-__error__(char *pcFilename, uint32_t ui32Line)
-{
-}
+void __error__(char *pcFilename, uint32_t ui32Line) {}
 #endif
 
-//*****************************************************************************
-//
-// Configure the UART and its pins.  This must be called before UARTprintf().
-//
-//*****************************************************************************
-void
-ConfigureUART(void)
-{
-    //
-    // Enable the GPIO Peripheral used by the UART.
-    //
-    SysCtlPeripheralEnable(SYSCTL_PERIPH_GPIOA);
+static volatile bool stop = false;
 
-    //
-    // Enable UART0
-    //
+void configure_UART() {
+    SysCtlPeripheralEnable(SYSCTL_PERIPH_GPIOA);
     SysCtlPeripheralEnable(SYSCTL_PERIPH_UART0);
 
-    //
-    // Configure GPIO Pins for UART mode.
-    //
     GPIOPinConfigure(GPIO_PA0_U0RX);
     GPIOPinConfigure(GPIO_PA1_U0TX);
     GPIOPinTypeUART(GPIO_PORTA_BASE, GPIO_PIN_0 | GPIO_PIN_1);
 
-    //
-    // Use the internal 16MHz oscillator as the UART clock source.
-    //
     UARTClockSourceSet(UART0_BASE, UART_CLOCK_PIOSC);
-
-    //
-    // Initialize the UART for console I/O.
-    //
     UARTStdioConfig(0, 115200, 16000000);
 }
 
-//*****************************************************************************
-//
-// Print "Hello World!" to the UART on the evaluation board.
-//
-//*****************************************************************************
-int
-main(void)
-{
-    //volatile uint32_t ui32Loop;
+void button_ISR() {
+    uint32_t status = GPIOIntStatus(BUTTON_BASE, true);
 
-    //
-    // Enable lazy stacking for interrupt handlers.  This allows floating-point
-    // instructions to be used within interrupt handlers, but at the expense of
-    // extra stack usage.
-    //
-    FPULazyStackingEnable();
+    if(status & BUTTON_INT_PIN) {
+        stop = true;
+    }
 
-    //
-    // Set the clocking to run directly from the crystal.
-    //
-    SysCtlClockSet(SYSCTL_SYSDIV_4 | SYSCTL_USE_PLL | SYSCTL_XTAL_16MHZ |
-                       SYSCTL_OSC_MAIN);
+    GPIOIntClear(BUTTON_BASE, BUTTON);
+}
 
-    //
-    // Enable the GPIO port that is used for the on-board LED.
-    //
-    SysCtlPeripheralEnable(SYSCTL_PERIPH_GPIOF);
+void timer_ISR() {
+    if (stop == true) {
+        GPIOPinWrite(LED_BASE, BLUE_LED, BLUE_LED);
+    }
 
-    //
-    // Enable the GPIO pins for the LED (PF2 & PF3).
-    //
-    GPIOPinTypeGPIOOutput(GPIO_PORTF_BASE, GPIO_PIN_1);
-    GPIOPinTypeGPIOOutput(GPIO_PORTF_BASE, GPIO_PIN_2);
-    GPIOPinTypeGPIOOutput(GPIO_PORTF_BASE, GPIO_PIN_3);
+    TimerIntClear(TIMER_BASE, TIMER_TIMEOUT_INT);
+}
 
-    SysCtlPeripheralEnable(SYSCTL_PERIPH_TIMER0);
-    TimerConfigure(TIMER0_BASE,TIMER_CFG_32_BIT_PER);
+int Hz_to_counts(int Hz) {
+    return (int) 120000000/Hz;
+}
 
-    //
-    // Initialize the UART.
-    //
-    ConfigureUART();
+int main() {
+    SysCtlClockSet(SYSCTL_SYSDIV_2_5|SYSCTL_USE_PLL|SYSCTL_OSC_MAIN|SYSCTL_XTAL_16MHZ);
 
-    //
-    // Initialize Parameters
-    //
+    configure_UART();
 
+    SysCtlPeripheralEnable(LED_PERIPH);
+    SysCtlPeripheralEnable(TIMER_PERIPH);
 
+    SysCtlDelay(3);
 
-    //
-    // We are finished.  Hang around doing nothing.
-    //
-    while(1)
-    {
-        //
-        // Turn on the LED.
-        //
+    GPIOPinTypeGPIOInput(BUTTON_BASE, BUTTON);
+    GPIOPinTypeGPIOOutput(LED_BASE, RED_LED | BLUE_LED);
+    GPIOPadConfigSet(BUTTON_BASE, BUTTON, GPIO_STRENGTH_2MA, GPIO_PIN_TYPE_STD_WPU);
 
-        GPIOPinWrite(GPIO_PORTF_BASE, GPIO_PIN_2, GPIO_PIN_2);
-        GPIOPinWrite(GPIO_PORTF_BASE, GPIO_PIN_3, GPIO_PIN_3);
+    GPIOIntDisable(BUTTON_BASE, BUTTON);
+    GPIOIntClear(BUTTON_BASE, BUTTON);
+    GPIOIntTypeSet(BUTTON_BASE, BUTTON, GPIO_FALLING_EDGE);
+    GPIOIntRegister(BUTTON_BASE, button_ISR);
+    IntPrioritySet(BUTTON_INT, 0);
+    GPIOIntEnable(BUTTON_BASE, BUTTON_INT_PIN);
 
+    TimerConfigure(TIMER_BASE, TIMER_CFG_PERIODIC);
+    TimerLoadSet(TIMER_BASE, TIMER, Hz_to_counts(100));
+    TimerEnable(TIMER_BASE, TIMER);
 
+    TimerIntDisable(TIMER_BASE, TIMER_TIMEOUT_INT);
+    TimerIntClear(TIMER_BASE, TIMER_TIMEOUT_INT);
+    TimerIntRegister(TIMER_BASE, TIMER, timer_ISR);
+    IntPrioritySet(TIMER_INT, 64);
+    TimerIntEnable(TIMER_BASE, TIMER_TIMEOUT_INT);
 
-
+    while(1) {
+        if (stop == true) {
+            GPIOPinWrite(LED_BASE, RED_LED, RED_LED);
+        }
     }
 }

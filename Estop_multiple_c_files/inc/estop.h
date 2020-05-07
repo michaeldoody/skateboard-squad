@@ -36,8 +36,6 @@ void init_button_int();
 void enable_button_int();
 void init_timer_int();
 void enable_timer_int();
-void enable_LED_periph();
-void enable_timer_periph();
-void turn_on_red_LED();
+
 
 #endif /* INC_ESTOP_H_ */
