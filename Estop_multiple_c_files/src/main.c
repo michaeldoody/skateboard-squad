@@ -48,8 +48,8 @@ int main() {
 
     configure_UART();
 
-    enable_LED_periph();
-    enable_timer_periph();
+    SysCtlPeripheralEnable(TIMER_PERIPH);
+    SysCtlPeripheralEnable(LED_PERIPH);
 
     SysCtlDelay(3);
 
@@ -60,7 +60,7 @@ int main() {
 
     while(1) {
         if (stop == true) {
-            turn_on_red_LED();
+                GPIOPinWrite(LED_BASE, RED_LED, RED_LED);
         }
     }
 }
