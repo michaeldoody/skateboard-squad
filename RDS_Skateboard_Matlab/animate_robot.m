@@ -144,7 +144,7 @@ end
                 plot(robot.curr.com.x,robot.curr.com.y,'o-',...
                     'Color',params.viz.colors.tracers.robotCoM,...
                     'MarkerSize',3,'LineWidth',2,...
-                    'MarkerFaceColor',params.viz.colors.tracers.topLinkCoM,...
+                    'MarkerFaceColor',params.viz.colors.tracers.robotCoM,...
                     'MarkerEdgeColor',params.viz.colors.tracers.robotCoM);
                 hold off;
             end
@@ -193,7 +193,6 @@ end
         yRight= [board.curr.corners(1,3),board.curr.corners(2,3) + board.curr.force.right.y];
         % draw the vectors
         hold on;
-        line(xleft,yLeft,'Color',params.viz.colors.vectors,'LineWidth',2)
         line(xright,yRight,'Color',params.viz.colors.vectors,'LineWidth',2)
         hold off;
     end

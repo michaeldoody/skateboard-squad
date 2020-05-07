@@ -52,7 +52,7 @@ function params = initial_params
     params.sim.tfinal = 1;
     tfinal = params.sim.tfinal;
     
-    params.g = 9.8;
+    params.g = 1;
     
     params.bottomMotor.maxTorque = 30.6; % (Nm)
     params.topMotor.maxTorque = 16.2; % (Nm)
@@ -63,8 +63,8 @@ function params = initial_params
     params.bottomMotor.time = 0:dt:tfinal;
     params.topMotor.time = 0:dt:tfinal;
     
-    params.bottomMotor.torque = ones(1, length(0:params.sim.dt:params.sim.tfinal));
-    params.topMotor.torque = ones(1, length(0:params.sim.dt:params.sim.tfinal));
+    params.bottomMotor.torque = zeros(1, length(0:params.sim.dt:params.sim.tfinal));
+    params.topMotor.torque = zeros(1, length(0:params.sim.dt:params.sim.tfinal));
 
     params.sim.constraints = ['true', 'true'];
     

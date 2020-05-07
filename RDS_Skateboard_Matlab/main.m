@@ -30,17 +30,17 @@ bottomLinkTheta_init = 0;
 topLinkTheta_init = 0;
 boardDX_init = 0;
 boardDY_init = 0;
-boardDTheta_init = 0;
+boardDTheta_init = 10;
 bottomLinkDTheta_init = 0;
 topLinkDTheta_init = 0;
 
 
 x_IC = [boardX_init; boardY_init; boardTheta_init;...
-    bottomLinkTheta_init; topLinkTheta_init; ...
-    boardDX_init; boardDY_init; boardDTheta_init;...
-    bottomLinkDTheta_init; topLinkDTheta_init];
+        bottomLinkTheta_init; topLinkTheta_init; ...
+        boardDX_init; boardDY_init; boardDTheta_init;...
+        bottomLinkDTheta_init; topLinkDTheta_init];
     
-i = 1;
+i = 0;
  
 plot_robot(x_IC,params,'new_fig',false);
 
@@ -67,14 +67,25 @@ params = initial_params;
 %% Set up events using odeset
 options = odeset('Events',@robot_events);
 
-%% Simulate the robot forward in time     % initial conditions
-tnow = 0.0;             % starting time
+%% Simulate the robot forward in time     
+
+% initial conditions
+tnow = 0.0;            
+% starting time
 
 % start with null matrices for holding results -- we'll be adding to these
 % with each segment of the simulation
 tsim = [];
 xsim = [];
 F_list = [];
+DX_Matrix = [];
+DY_Matrix = [];
+DTheta_Matrix = [];
+DTheta_bottomlink_Matrix = [];
+DTheta_toplink_Matrix = [];
+TotEnergy = [];
+T = [];
+
 
 % create a place for constraint forces
 F = [];
@@ -88,11 +99,11 @@ while tnow < params.sim.tfinal
     tsim = [tsim;tseg];
     xsim = [xsim;xseg];
     tnow = tsim(end);
-    x_IC = xsim(end,:); 
+    x_IC = xsim(end,:)
     
     % compute the constraint forces that were active during the jump
     [Fseg] = constraint_forces(tseg,xseg',params);
-    F_list = [F_list,Fseg];
+     F_list = [F_list,Fseg];
     
     % if simulation terminated before tfinal, determine which constaints
     % are still active, then continue integration
@@ -116,13 +127,33 @@ end
 % Begin with plot of ground reaction versus weight, to be sure we're
 % pushing off and then leaving the ground
 figure;
-plot(tsim,F_list(1,:)+F_list(2,:),'b-','LineWidth',2);
-hold on
-weight = (params.boardMass+params.bottomLinkMass+params.topLinkMass)*params.g*ones(1,length(tsim));
-plot(tsim,weight,'r-','LineWidth',1);
-ylabel('Ground Reaction vs Weight (N)')
-xlabel('time (sec)')
+subplot(2,3,1)
+plot(T, DX_Matrix, 'r-', 'LineWidth', 2);
+ylabel('DX (m/s)');
+xlabel('time (sec)');
+subplot(2,3,2)
+plot(T, DY_Matrix, 'r-', 'LineWidth', 2);
+ylabel('DY (m/s)');
+xlabel('time (sec)');
+subplot(2,3,3)
+plot(T, DTheta_Matrix, 'r-', 'LineWidth', 2);
+ylabel('DTheta (rad/s)');
+xlabel('time (sec)');
+subplot(2,3,4)
+plot(T, DTheta_bottomlink_Matrix, 'r-', 'LineWidth', 2);
+ylabel('DTheta bottomLink (rad/s)');
+xlabel('time (sec)');
+subplot(2,3,5)
+plot(T, DTheta_toplink_Matrix, 'r-', 'LineWidth', 2);
+ylabel('DTheta topLink (rad/s)');
+xlabel('time (sec)');
+subplot(2,3,6)
+plot(T, TotEnergy, 'b-', 'LineWidth', 2);
+ylabel('Energy (J)');
+xlabel('time (sec)');
 hold off
+
+
 
 % Now let's animate
 
@@ -169,6 +200,7 @@ fprintf('Done!\n');
 %
 % Outputs:
 %   dx: derivative of state x with respect to time.
+%   energy: total energy of the system at state x
 
 function [dx] = robot_dynamics(t,x)
 
@@ -178,6 +210,7 @@ nq = numel(x)/2;    % assume that x = [q;q_dot];
 q_dot = x(nq+1:2*nq);
 
 % solve for control inputs at this instant
+
 bottomMotorTorque = interp1(params.bottomMotor.time,params.bottomMotor.torque,t);
 topMotorTorque = interp1(params.topMotor.time,params.topMotor.torque,t);
 Q = [0;0;0;bottomMotorTorque;topMotorTorque];
@@ -186,6 +219,17 @@ Q = [0;0;0;bottomMotorTorque;topMotorTorque];
 H = H_eom(x,params);
 Minv = inv_mass_matrix(x,params);
 [A_all,Hessian] = constraint_derivatives(x,params);
+
+% compute energy
+
+TE_now = totalEnergy(x, params);
+DX_Matrix = [DX_Matrix; x(6)]; % matrix keeping track of DX for skateboard
+DY_Matrix = [DY_Matrix; x(7)]; % matrix keeping track of DY for skateboard
+DTheta_Matrix = [DTheta_Matrix; x(8)]; % matrix keeping track of DTheta for skateboard
+DTheta_bottomlink_Matrix = [DTheta_bottomlink_Matrix; x(9)];
+DTheta_toplink_Matrix = [DTheta_toplink_Matrix; x(9)];
+TotEnergy = [TotEnergy; TE_now]; % matrix keeping track of total energy
+T = [T; t]; % matrix keeping track of time
 
 % build the constraints, forces, and solve for acceleration 
 switch params.sim.constraints  

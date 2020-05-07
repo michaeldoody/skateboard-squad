@@ -132,6 +132,10 @@ topLinkYCoM = boardY + bottomLinkHeight * cos(boardTheta + bottomLinkTheta) + to
 robotTipX = boardX + bottomLinkHeight * sin(boardTheta + bottomLinkTheta + pi) + topLinkHeight * sin(boardTheta + bottomLinkTheta + topLinkTheta + pi); 
 robotTipY = boardY + bottomLinkHeight * cos(boardTheta + bottomLinkTheta) + topLinkHeight * cos(boardTheta + bottomLinkTheta + topLinkTheta);
 
+syms bottomLinkTheta_World topLinkTheta_World real
+bottomLinkTheta_World = bottomLinkTheta + boardTheta + pi;
+topLinkTheta_World = topLinkTheta + bottomLinkTheta_World;
+
 % robot's CoM
 
 robotXCoM = (boardX * boardMass + bottomLinkXCoM * bottomLinkMass + topLinkXCoM * topLinkMass)/(boardMass + bottomLinkMass + topLinkMass);
@@ -175,7 +179,8 @@ fprintf('\tGenerating time derivatives of the kinematics equations...\n');
 derivative = @(in)( jacobian(in,[q;dq])*[dq;ddq] );
 
 % CoM velocities:
-syms boardDX boardDY bottomLinkDXCoM bottomLinkDYCoM topLinkDXCoM topLinkDYCoM  real
+syms bottomLinkDXCoM bottomLinkDYCoM topLinkDXCoM topLinkDYCoM ...
+     boardDTheta bottomLinkDTheta topLinkDTheta real
 
 % MAYBE NECCESSARY MAYBE NOT
 boardDX = derivative(boardX); 
@@ -187,6 +192,12 @@ bottomLinkDYCoM = derivative(bottomLinkYCoM);
 
 topLinkDXCoM = derivative(topLinkXCoM);
 topLinkDYCoM = derivative(topLinkYCoM);
+
+
+boardDTheta = derivative(boardTheta);
+bottomLinkDTheta = derivative(bottomLinkTheta);
+topLinkDTheta = derivative(topLinkTheta);
+
 
 syms A_all H_constL H_constR real
 
@@ -205,9 +216,9 @@ fprintf('\tGenerating kinetic energy equation...\n');
 syms boardKE bottomLinkKE topLinkKE KE real
 
 % kinetic energy of each body ONLY TRANSLATION:
-boardKE = (1/2 * boardMass * boardDX^2+boardDY^2) + (1/2* boardI * boardDTheta^2);
-bottomLinkKE = (1/2* bottomLinkMass * ((bottomLinkDXCoM)^2+(bottomLinkDYCoM)^2)) + (1/2 * bottomLinkI * bottomLinkDTheta^2);
-topLinkKE = (1/2* topLinkMass * ((topLinkDXCoM)^2+(topLinkDYCoM)^2))+(1/2 * topLinkI * topLinkDTheta^2);
+boardKE = (1/2 * boardMass * boardDX^2+boardDY^2) + (1/2 * boardI * boardDTheta^2);
+bottomLinkKE = (1/2* bottomLinkMass * ((bottomLinkDXCoM)^2+(bottomLinkDYCoM)^2)) + (1/2 * bottomLinkI * (boardDTheta + bottomLinkDTheta)^2);
+topLinkKE = (1/2* topLinkMass * ((topLinkDXCoM)^2+(topLinkDYCoM)^2)) + (1/2 * topLinkI * (boardDTheta + bottomLinkDTheta + topLinkDTheta)^2);
 
 % total kinetic energy:
 KE = boardKE + bottomLinkKE + topLinkKE;
@@ -229,6 +240,11 @@ PE = boardPE + bottomLinkPE + topLinkPE;
 
 fprintf('\t...done.\n');
 
+syms totEnergy real
+
+totEnergy = PE + KE;
+matlabFunction(totEnergy,'File','autogen_total_energy');
+
 %% Lagrangian
 fprintf('\tGenerating Lagrangian...\n');
 
@@ -249,6 +265,8 @@ fprintf('\tGenerating Euler-Lagrange equations of motion...\n')
 
 
 % Variable initializations:
+
+
 del_L_del_dq = sym('del_L_del_dq',[numel(q),1],'real'); % del L/del q_dot
 ELeq_term1  = sym('ELeq_term1',[numel(q),1],'real'); % d(del L/del dq)/dt
 ELeq_term2  = sym('ELeq_term2',[numel(q),1],'real'); % del L/del q
