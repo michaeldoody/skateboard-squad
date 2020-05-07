@@ -18,7 +18,7 @@
 % Outputs:
 %   none
 
-function animate_robot(q_list,params,varargin)
+function animate_robot(q_list, F_list, params,varargin)
 
 % Parse input arguments
 % Note: a simple robot animation function doesn't need this, but I want to
@@ -32,54 +32,68 @@ p = inputParser;
 
 % Step 2: create the parsing schema:
 %   2a: required inputs:
-addRequired(p,'cart_pend_config', ...
-    @(q_list) isnumeric(q_list) && size(q_list,1)==5);
-addRequired(p,'cart_pend_params', ...
+addRequired(p,'robot_config', ...
+    @(q) isnumeric(q_list) && size(q_list,1)==5);
+addRequired(p,'constraint_forces', ...
+    @(q) isnumeric(F_list) && size(F_list,1)==2);
+addRequired(p,'robot_params', ...
     @(params) ~isempty(params));
-%   2b: optional inputs:
+
 %       optional name-value pairs to trace different parts of the robot:
 addParameter(p, 'trace_board_com', false);
 addParameter(p, 'trace_bottomLink_com', false);
 addParameter(p, 'trace_topLink_com', false);
 addParameter(p, 'trace_robot_com', false);
+addParameter(p, 'show_constraint_forces', false);
 addParameter(p, 'video', false);
 
 
 % Step 3: parse the inputs:
-parse(p, q_list, params, varargin{:});
+parse(p, q_list, F_list, params, varargin{:});
 
 fig_handle = figure('Renderer', 'painters', 'Position', [10 10 900 600]);
 
 if (p.Results.trace_board_com || p.Results.trace_bottomLink_com ...
-        || p.Results.trace_topLink_com)
+        || p.Results.trace_topLink_com || p.Results.trace_robot_com)
     tracing = true;
 else
     tracing = false;
 end
     
-    if p.Results.video
+   
+    
+if tracing
+        
+    board.curr.com.x = [];
+    board.curr.com.y = [];
+        
+    bottomLink.curr.com.x = [];
+    bottomLink.curr.com.y = [];
+        
+    topLink.curr.com.x = [];
+    topLink.curr.com.y = [];
+        
+    robot.curr.com.x = [];
+    robot.curr.com.y = [];
+end
+
+if p.Results.video
         v = VideoWriter('skateboard.avi');
         open(v);
-    end
-    
-    if tracing
-        board.curr.com.x = [];
-        board.curr.com.y = [];
-        
-        bottomLink.curr.com.x = [];
-        bottomLink.curr.com.y = [];
-        
-        topLink.curr.com.x = [];
-        topLink.curr.com.y = [];
-        
-        robot.curr.com.x = [];
-        robot.curr.com.y = [];
-    end
+end
     
     for i = 1:size(q_list,2)
-        plot_robot(q_list(:,i),params,'new_fig',false);
-       
         
+        plot_robot(q_list(:,i),params,'new_fig',false);
+        
+        q = q_list(:,i); 
+        boardX = q(1);
+        boardY = q(2);
+        boardTheta = q(3);
+        bottomLinkTheta = q(4);
+        topLinkTheta = q(5);
+        F = F_list(:,i);
+       
         if tracing
             FK = fwd_kin(q_list(:,i),params);
 
@@ -130,16 +144,57 @@ end
                 plot(robot.curr.com.x,robot.curr.com.y,'o-',...
                     'Color',params.viz.colors.tracers.robotCoM,...
                     'MarkerSize',3,'LineWidth',2,...
-                    'MarkerFaceColor',params.viz.colors.tracers.topLinkCoM,...
+                    'MarkerFaceColor',params.viz.colors.tracers.robotCoM,...
                     'MarkerEdgeColor',params.viz.colors.tracers.robotCoM);
                 hold off;
             end
         end
         
-        if p.Results.video
-            M(i) = getframe(fig_handle);
+                
+        if p.Results.video 
+            M(i) = getframe;
             writeVideo(v,M(i));
         end
+    end
+    
+    if p.Results.show_constraint_forces
+        % find the locations of the left and right bottom corners of the
+        % foot        
+        T_board = [cos(boardTheta), -sin(boardTheta), boardX;
+                   sin(boardTheta),  cos(boardTheta), boardY;
+                    0,          0,         1]; 
+            
+            board.home.upp_left.x    = -0.5*params.boardLength;
+            board.home.upp_left.y    = 0.5*params.boardHeight;
+
+            board.home.upp_right.x   = 0.5*params.boardLength;
+            board.home.upp_right.y   = 0.5*params.boardHeight;
+
+            board.home.low_right.x   = 0.5*params.boardLength;
+            board.home.low_right.y   = -0.5*params.boardHeight;
+
+            board.home.low_left.x    = -0.5*params.boardLength;
+            board.home.low_left.y    = -0.5*params.boardHeight;
+
+            board.home.corners = horzcat([board.home.upp_left.x; board.home.upp_left.y; 1],...
+                            [board.home.upp_right.x; board.home.upp_right.y; 1],...
+                            [board.home.low_right.x; board.home.low_right.y; 1],...
+                            [board.home.low_left.x;  board.home.low_left.y; 1]);
+                        
+        board.curr.corners = T_board*board.home.corners;  % the ones we want are in rows 1&2 of columns 2&3
+        % compute the reaction forces at the two corners, assuming that the
+        % x-direction force is distributed between the two according to
+        % their z-direction (normal) forces
+       % Fscale = 2*params.model.geom.foot.hbot/params.model.dyn.body.m/params.g;  % scale factor for visualization
+        board.curr.force.left.y = F(1);
+        board.curr.force.right.y = F(2);
+        % create vectors of x and z ends for both left and right
+        yLeft = [board.curr.corners(1,4),board.curr.corners(2,4) + board.curr.force.left.y];
+        yRight= [board.curr.corners(1,3),board.curr.corners(2,3) + board.curr.force.right.y];
+        % draw the vectors
+        hold on;
+        line(xright,yRight,'Color',params.viz.colors.vectors,'LineWidth',2)
+        hold off;
     end
     
     if p.Results.video

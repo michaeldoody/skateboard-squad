@@ -213,6 +213,11 @@ hold on;
 fill(bottomLink.curr.corners(1,:),bottomLink.curr.corners(2,:),params.viz.colors.bottomLink);
 hold on 
 fill(topLink.curr.corners(1,:),topLink.curr.corners(2,:),params.viz.colors.topLink);
+hold on
+circle(board.curr.corners(1,3), board.curr.corners(2,3), params.wheelRadius, [0.25, 0.25, 0.25]);
+hold on
+circle(board.curr.corners(1,4), board.curr.corners(2,4), params.wheelRadius, [0.25, 0.25, 0.25]);
+
 plot(bottomLink.curr.com.x, bottomLink.curr.com.y,'o','MarkerSize',10,...
     'MarkerFaceColor',params.viz.colors.bottomLinkCoM)
 hold on

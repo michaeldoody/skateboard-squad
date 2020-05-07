@@ -24,6 +24,8 @@ function params = initial_params
     params.boardLength = 0.4;  % m
     params.boardHeight = 0.063;
     
+    params.wheelRadius = 0.03;
+    
 % Bottom Link Parameters
 
     params.bottomLinkMass = 1.124;
@@ -45,9 +47,27 @@ function params = initial_params
     params.topLinkXCoM = 0;
     params.topLinkYCoM = 0.137;
     
-    params.g = 0;
-    
     params.sim.dt = 0.01;
+    dt = params.sim.dt;
+    params.sim.tfinal = 1;
+    tfinal = params.sim.tfinal;
+    
+    params.g = 1;
+    
+    params.bottomMotor.maxTorque = 30.6; % (Nm)
+    params.topMotor.maxTorque = 16.2; % (Nm)
+    
+    params.bottomMotor.maxDTheta = 121.7 * 0.10472; % rpm converted to radians per second
+    params.topMotor.maxDTheta = 243.5 * 0.10472; % rpm converted to radians per second
+    
+    params.bottomMotor.time = 0:dt:tfinal;
+    params.topMotor.time = 0:dt:tfinal;
+    
+    params.bottomMotor.torque = zeros(1, length(0:params.sim.dt:params.sim.tfinal));
+    params.topMotor.torque = zeros(1, length(0:params.sim.dt:params.sim.tfinal));
+
+    params.sim.constraints = ['true', 'true'];
+    
     
     params.viz.colors.board = [1 0 0];
     params.viz.colors.bottomLink = [0 1 0];
@@ -59,6 +79,6 @@ function params = initial_params
     params.viz.colors.tracers.topLinkCoM = [0 1 1];
     params.viz.colors.tracers.robotCoM = 'cyan';
 
-    params.viz.axis_lims = [-5,5,-5,5];
+    params.viz.axis_lims = [-1,1,-1,1];
   
 end
