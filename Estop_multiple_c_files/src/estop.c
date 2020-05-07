@@ -70,13 +70,5 @@ void enable_timer_int(){
     TimerIntEnable(TIMER_BASE, TIMER_TIMEOUT_INT);
 }
 
-void enable_LED_periph(){
-    SysCtlPeripheralEnable(LED_PERIPH);
-}
-void enable_timer_periph(){
-SysCtlPeripheralEnable(TIMER_PERIPH);
-}
-void turn_on_red_LED(){
-    GPIOPinWrite(LED_BASE, RED_LED, RED_LED);
-}
+
 
