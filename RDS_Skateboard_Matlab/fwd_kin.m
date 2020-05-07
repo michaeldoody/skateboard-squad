@@ -16,10 +16,10 @@
 
 function [FK] = fwd_kin(q,params)
     boardX = q(1);
-    boardY = q(2);
-    boardTheta = q(3);
-    bottomLinkTheta = q(4);
-    topLinkTheta = q(5);
+    boardY = 0;
+    boardTheta = 0;
+    bottomLinkTheta = q(2);
+    topLinkTheta = q(3);
 % boardX,boardY,boardMass,boardTheta,bottomLinkRCoM,
 % bottomLinkMass,bottomLinkTheta,bottomLinkHeight,
 % topLinkRCoM,topLinkMass,topLinkTheta,topLinkHeight

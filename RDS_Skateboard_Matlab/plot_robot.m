@@ -88,8 +88,8 @@ board.curr.uppMidpoint = [(board.curr.corners(1,1) + board.curr.corners(1,2))/2,
 % link can translate horizontally and can rotate, so we first compute a 
 % homogeneous transformation matrix T_pend in SE(2):
 
-T_bottomLink = [cos(q(3) + q(4)), -sin(q(3) + q(4)), q(1);
-                sin(q(3) + q(4)),  cos(q(3) + q(4)), q(2);
+T_bottomLink = [cos(q(2)), -sin(q(2)), q(1);
+                sin(q(2)),  cos(q(2)), 0;
                  0,          0,         1];
 
 % We first compute the 4 corners of the pendulum when the robot is in the
@@ -134,8 +134,8 @@ bottomLink.curr.uppMidpoint = [(bottomLink.curr.corners(1,1) + bottomLink.curr.c
 % link can translate horizontally and can rotate, so we first compute a 
 % homogeneous transformation matrix T_pend in SE(2):
 % 
-T_topLink = [cos(q(3) + q(4) + q(5)), -sin(q(3) + q(4) + q(5)), bottomLink.curr.uppMidpoint(1);
-             sin(q(3) + q(4) + q(5)),  cos(q(3) + q(4) + q(5)), bottomLink.curr.uppMidpoint(2);
+T_topLink = [cos(q(2) + q(3)), -sin(q(2) + q(3)), bottomLink.curr.uppMidpoint(1);
+             sin(q(2) + q(3)),  cos(q(2) + q(3)), bottomLink.curr.uppMidpoint(2);
              0,          0,         1];
 
 % We first compute the 4 corners of the pendulum when the robot is in the
