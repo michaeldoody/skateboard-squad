@@ -46,13 +46,13 @@ for i=1:length(tseg)
             A = A_all(1,:);
             Adotqdot = [dq'*Hessian(:,:,1)*dq];
             F = inv(A*Minv*A')*(A*Minv*(Q - H) + Adotqdot);
-            Fseg(:,i) = [F(1); 0];
+            Fseg(:,i) = [F; 0];
             
         case ['false','true']      % right wheel is on the ground and left is off
             A = A_all(2,:);
             Adotqdot = [dq'*Hessian(:,:,2)*dq];
             F = inv(A*Minv*A')*(A*Minv*(Q - H) + Adotqdot);
-            Fseg(:,i) = [0; F(1)];
+            Fseg(:,i) = [0; F];
             
         case ['true','true']      % both wheels are on the ground
             A = A_all([1,2],:);

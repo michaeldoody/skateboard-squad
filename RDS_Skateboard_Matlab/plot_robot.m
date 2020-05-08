@@ -53,25 +53,23 @@ T_board =   [cos(q(3)), -sin(q(3)), q(1);
              0,          0,         1]; 
 
 board.home.upp_left.x    = -0.5*params.boardLength;
-board.home.upp_left.y    = 0.5*params.boardHeight;
+board.home.upp_left.y    = params.boardHeight/2;
 
 board.home.upp_right.x   = 0.5*params.boardLength;
-board.home.upp_right.y   = 0.5*params.boardHeight;
+board.home.upp_right.y   = params.boardHeight/2;
 
 board.home.low_right.x   = 0.5*params.boardLength;
-board.home.low_right.y   = -0.5*params.boardHeight;
+board.home.low_right.y   = -params.boardHeight/2;
 
 board.home.low_left.x    = -0.5*params.boardLength;
-board.home.low_left.y    = -0.5*params.boardHeight;
+board.home.low_left.y    = -params.boardHeight/2;
 
 board.home.corners = horzcat([board.home.upp_left.x; board.home.upp_left.y; 1],...
                             [board.home.upp_right.x; board.home.upp_right.y; 1],...
                             [board.home.low_right.x; board.home.low_right.y; 1],...
                             [board.home.low_left.x;  board.home.low_left.y; 1]);
                         
-
-
-                        
+       
 
 % The cart can translate horizontally by q(1) but cannot translate
 % vertically or rotate, so we don't bother computing a homogeneous
@@ -79,17 +77,21 @@ board.home.corners = horzcat([board.home.upp_left.x; board.home.upp_left.y; 1],.
 % explicitly:
 
 board.curr.corners = T_board*board.home.corners;
+board.curr.corners(2,:) = board.curr.corners(2,:) + params.wheelRadius ...
+                           + params.boardHeight/2;
+
+
 
 board.curr.uppMidpoint = [(board.curr.corners(1,1) + board.curr.corners(1,2))/2,...
-                               (board.curr.corners(2,1) + board.curr.corners(2,2))/2];
+                          (board.curr.corners(2,1) + board.curr.corners(2,2))/2];
 
 %% Compute the 4 corners of the bottom link
 % The bottom link is a rectangle whose bottom edge's center is (boardX + offset, boardY). The bottom
 % link can translate horizontally and can rotate, so we first compute a 
 % homogeneous transformation matrix T_pend in SE(2):
 
-T_bottomLink = [cos(q(3) + q(4)), -sin(q(3) + q(4)), q(1);
-                sin(q(3) + q(4)),  cos(q(3) + q(4)), q(2);
+T_bottomLink = [cos(q(3) + q(4)), -sin(q(3) + q(4)), board.curr.uppMidpoint(1);
+                sin(q(3) + q(4)),  cos(q(3) + q(4)), board.curr.uppMidpoint(2);
                  0,          0,         1];
 
 % We first compute the 4 corners of the pendulum when the robot is in the
@@ -186,7 +188,6 @@ robot.curr.com.x = FK(1,4);
 robot.curr.com.y = FK(2,4);
 
 
-
 if (i == 0) 
 
 fprintf("current coordinates for skateboard corner are: (%f , %f).\n",...
@@ -218,6 +219,9 @@ circle(board.curr.corners(1,3), board.curr.corners(2,3), params.wheelRadius, [0.
 hold on
 circle(board.curr.corners(1,4), board.curr.corners(2,4), params.wheelRadius, [0.25, 0.25, 0.25]);
 
+plot(board.curr.com.x, board.curr.com.y,'o','MarkerSize',10,...
+    'MarkerFaceColor',params.viz.colors.boardCoM)
+hold on
 plot(bottomLink.curr.com.x, bottomLink.curr.com.y,'o','MarkerSize',10,...
     'MarkerFaceColor',params.viz.colors.bottomLinkCoM)
 hold on
@@ -226,6 +230,8 @@ plot(topLink.curr.com.x, topLink.curr.com.y, 'o', 'MarkerSize', 10,...
 hold on;
 plot(robot.curr.com.x, robot.curr.com.y, 'o', 'MarkerSize', 10,...
     'MarkerFaceColor','cyan');
+hold on
+yline(0);
 hold off
 
  

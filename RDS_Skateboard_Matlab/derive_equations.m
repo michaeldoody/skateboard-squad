@@ -67,8 +67,6 @@ fprintf('\t...done.\n');
 %% Define kinematics variables
 fprintf('\tInitializing kinematics variables...\n');
 
-syms boardXCoM boardYCoM real
-
 % coordinate of the bottom link CoM:
 syms bottomLinkXCoM bottomLinkYCoM  real
 % Note: we already defined x_cart as the x-coordinate of the cart CoM.
@@ -122,27 +120,26 @@ fprintf('\tGenerating forward kinematics equations...\n');
 
 % compute the (x,y) location of the pendulum's center of mass:
 
-boardXCoM = boardX;
-boardYCoM = boardY + wheelRadius + boardHeight/2;
+boardY = (boardY + wheelRadius + boardHeight/2);
 
-bottomLinkXCoM = boardXCoM + boardHeight/2 * sin(boardTheta + pi) + bottomLinkRCoM * sin(boardTheta + bottomLinkTheta + pi); % TODO
-bottomLinkYCoM = boardYCoM + boardHeight/2 * cos(boardTheta) + bottomLinkRCoM * cos(boardTheta + bottomLinkTheta); % TODO
+bottomLinkXCoM = boardX + boardHeight/2 * sin(boardTheta + pi) + bottomLinkRCoM * sin(boardTheta + bottomLinkTheta + pi); % TODO
+bottomLinkYCoM = boardY + boardHeight/2 * cos(boardTheta) + bottomLinkRCoM * cos(boardTheta + bottomLinkTheta); % TODO
 
-topLinkXCoM = boardXCoM + boardHeight/2 * sin(boardTheta + pi) + bottomLinkHeight * sin(boardTheta + bottomLinkTheta + pi) + topLinkRCoM * sin(boardTheta + bottomLinkTheta + topLinkTheta + pi); 
-topLinkYCoM = boardYCoM + boardHeight/2 * cos(boardTheta) + bottomLinkHeight * cos(boardTheta + bottomLinkTheta) + topLinkRCoM * cos(boardTheta + bottomLinkTheta + topLinkTheta);
+topLinkXCoM = boardX + boardHeight/2 * sin(boardTheta + pi) + bottomLinkHeight * sin(boardTheta + bottomLinkTheta + pi) + topLinkRCoM * sin(boardTheta + bottomLinkTheta + topLinkTheta + pi); 
+topLinkYCoM = boardY + boardHeight/2 * cos(boardTheta) + bottomLinkHeight * cos(boardTheta + bottomLinkTheta) + topLinkRCoM * cos(boardTheta + bottomLinkTheta + topLinkTheta);
 
 % compute the (x,y) location of the robot's tip:
-robotTipX = boardXCoM + boardHeight/2 * sin(boardTheta + pi) + bottomLinkHeight * sin(boardTheta + bottomLinkTheta + pi) + topLinkHeight * sin(boardTheta + bottomLinkTheta + topLinkTheta + pi); 
-robotTipY = boardYCoM + boardHeight/2 * cos(boardTheta) + bottomLinkHeight * cos(boardTheta + bottomLinkTheta) + topLinkHeight * cos(boardTheta + bottomLinkTheta + topLinkTheta);
+robotTipX = boardX + boardHeight/2 * sin(boardTheta + pi) + bottomLinkHeight * sin(boardTheta + bottomLinkTheta + pi) + topLinkHeight * sin(boardTheta + bottomLinkTheta + topLinkTheta + pi); 
+robotTipY = boardY + boardHeight/2 * cos(boardTheta) + bottomLinkHeight * cos(boardTheta + bottomLinkTheta) + topLinkHeight * cos(boardTheta + bottomLinkTheta + topLinkTheta);
 
 % robot's CoM
 
-robotXCoM = (boardXCoM * boardMass + bottomLinkXCoM * bottomLinkMass + topLinkXCoM * topLinkMass)/(boardMass + bottomLinkMass + topLinkMass);
-robotYCoM = (boardYCoM * boardMass + bottomLinkYCoM * bottomLinkMass + topLinkYCoM * topLinkMass)/(boardMass + bottomLinkMass + topLinkMass);
+robotXCoM = (boardX * boardMass + bottomLinkXCoM * bottomLinkMass + topLinkXCoM * topLinkMass)/(boardMass + bottomLinkMass + topLinkMass);
+robotYCoM = (boardY * boardMass + bottomLinkYCoM * bottomLinkMass + topLinkYCoM * topLinkMass)/(boardMass + bottomLinkMass + topLinkMass);
 
-% create a 2x4 array to hold all forward kinematics (FK) outputs:
-FK = [boardXCoM, bottomLinkXCoM, topLinkXCoM, robotXCoM, robotTipX;
-      boardYCoM, bottomLinkYCoM, topLinkYCoM, robotYCoM, robotTipY];
+% create a 2x5 array to hold all forward kinematics (FK) outputs:
+FK = [boardX, bottomLinkXCoM, topLinkXCoM, robotXCoM, robotTipX;
+      boardY, bottomLinkYCoM, topLinkYCoM, robotYCoM, robotTipY];
 
 % generate a MATLAB function to compute all the FK outputs:
 matlabFunction(FK,'File','autogen_fwd_kin');
@@ -164,9 +161,9 @@ syms constL constR real
 % cc = 0;
 
 
-constL = -boardYCoM + boardHeight/2 * cos(boardTheta) + boardLength/2 * sin(boardTheta) + wheelRadius * cos(boardTheta);
+constL = -boardY + boardHeight/2 * cos(boardTheta) + boardLength/2 * sin(boardTheta) + wheelRadius * cos(boardTheta);
 
-constR = -boardYCoM + boardHeight/2 * cos(boardTheta) - boardLength/2 * sin(boardTheta) + wheelRadius * cos(boardTheta);
+constR = -boardY + boardHeight/2 * cos(boardTheta) - boardLength/2 * sin(boardTheta) + wheelRadius * cos(boardTheta);
 
 constraints = [constL; constR];
 
@@ -179,11 +176,11 @@ fprintf('\tGenerating time derivatives of the kinematics equations...\n');
 derivative = @(in)( jacobian(in,[q;dq])*[dq;ddq] );
 
 % CoM velocities:
-syms bottomLinkDXCoM bottomLinkDYCoM topLinkDXCoM topLinkDYCoM real
+syms boardDXCoM boardDYCoM bottomLinkDXCoM bottomLinkDYCoM topLinkDXCoM topLinkDYCoM real
 
 % MAYBE NECCESSARY MAYBE NOT
-boardDX = derivative(boardXCoM); 
-boardDY = derivative(boardYCoM);
+boardDX = derivative(boardX); 
+boardDY = derivative(boardY);
 
 bottomLinkDXCoM = derivative(bottomLinkXCoM);
 bottomLinkDYCoM = derivative(bottomLinkYCoM);
@@ -230,11 +227,9 @@ fprintf('\tGenerating potential energy equation...\n');
 syms boardPE bottomLinkPE topLinkPE PE real
 
 % potential energy of the pendulum:
-boardPE = boardMass * g * boardYCoM;
-bottomLinkPE = bottomLinkMass * g * bottomLinkYCoM;
-topLinkPE = bottomLinkMass * g * topLinkYCoM;
 
-PE = boardPE + bottomLinkPE + topLinkPE;
+
+PE = robotYCoM * g * (boardMass + bottomLinkMass + topLinkMass);
 % Note: the cart moves horizontally so its gravitational PE never changes.
 
 fprintf('\t...done.\n');
@@ -295,7 +290,9 @@ fprintf('\t\t...done.\n')
 
 fprintf('\t\tGenerating MATLAB functions...\n');
 matlabFunction(M,'File','autogen_mass_matrix');
+fprintf('\t\t...done building M function\n');
 matlabFunction(Minv,'File','autogen_inverse_mass_matrix');
+fprintf('\t\t...done building Minv function\n');
 matlabFunction(H,'File','autogen_H_eom');
 fprintf('\t\t...done.\n');
 

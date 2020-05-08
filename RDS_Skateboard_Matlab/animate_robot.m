@@ -115,86 +115,87 @@ end
             if p.Results.trace_board_com
                 hold on;
                 plot(board.curr.com.x,board.curr.com.y,'o-',...
-                    'Color',params.viz.colors.tracers.boardCoM,...
+                    'Color',params.viz.colors.boardCoM,...
                     'MarkerSize',3,'LineWidth',2,...
-                    'MarkerFaceColor',params.viz.colors.tracers.boardCoM,...
-                    'MarkerEdgeColor',params.viz.colors.tracers.boardCoM);
+                    'MarkerFaceColor',params.viz.colors.boardCoM,...
+                    'MarkerEdgeColor',params.viz.colors.boardCoM);
                 hold off;
             end
             if p.Results.trace_bottomLink_com
                 hold on;
                 plot(bottomLink.curr.com.x,bottomLink.curr.com.y,'o-',...
-                    'Color',params.viz.colors.tracers.bottomLinkCoM,...
+                    'Color',params.viz.colors.bottomLinkCoM,...
                     'MarkerSize',3,'LineWidth',2,...
-                    'MarkerFaceColor',params.viz.colors.tracers.bottomLinkCoM,...
-                    'MarkerEdgeColor',params.viz.colors.tracers.bottomLinkCoM);
+                    'MarkerFaceColor',params.viz.colors.bottomLinkCoM,...
+                    'MarkerEdgeColor',params.viz.colors.bottomLinkCoM);
                 hold off;
             end
             if p.Results.trace_topLink_com
                 hold on;
                 plot(topLink.curr.com.x,topLink.curr.com.y,'o-',...
-                    'Color',params.viz.colors.tracers.topLinkCoM,...
+                    'Color',params.viz.colors.topLink,...
                     'MarkerSize',3,'LineWidth',2,...
-                    'MarkerFaceColor',params.viz.colors.tracers.topLinkCoM,...
+                    'MarkerFaceColor',params.viz.colors.topLinkCoM,...
                     'MarkerEdgeColor',params.viz.colors.topLinkCoM);
                 hold off;
             end
             if p.Results.trace_robot_com
                 hold on;
                 plot(robot.curr.com.x,robot.curr.com.y,'o-',...
-                    'Color',params.viz.colors.tracers.robotCoM,...
+                    'Color',params.viz.colors.robotCoM,...
                     'MarkerSize',3,'LineWidth',2,...
-                    'MarkerFaceColor',params.viz.colors.tracers.robotCoM,...
-                    'MarkerEdgeColor',params.viz.colors.tracers.robotCoM);
+                    'MarkerFaceColor',params.viz.colors.robotCoM,...
+                    'MarkerEdgeColor',params.viz.colors.robotCoM);
                 hold off;
             end
         end
         
+        if p.Results.show_constraint_forces
                 
+        T_wheels =   [cos(q(3)), -sin(q(3)), q(1);
+                     sin(q(3)),  cos(q(3)), q(2);
+                     0,          0,         1]; 
+                 
+        wheels.home.upp_left.x    = -0.5*params.boardLength;
+        wheels.home.upp_left.y    = params.boardHeight/2;
+
+        wheels.home.upp_right.x   = 0.5*params.boardLength;
+        wheels.home.upp_right.y   = params.boardHeight/2;
+
+        wheels.home.low_right.x   = 0.5*params.boardLength;
+        wheels.home.low_right.y   = -params.boardHeight/2;
+
+        wheels.home.low_left.x    = -0.5*params.boardLength;
+        wheels.home.low_left.y    = -params.boardHeight/2;
+                 
+ wheels.home.corners = horzcat([wheels.home.upp_left.x; wheels.home.upp_left.y; 1],...
+                            [wheels.home.upp_right.x; wheels.home.upp_right.y; 1],...
+                            [wheels.home.low_right.x; wheels.home.low_right.y; 1],...
+                            [wheels.home.low_left.x;  wheels.home.low_left.y; 1]);
+                        
+       
+
+wheels.curr.corners = T_wheels*wheels.home.corners;
+wheels.curr.corners(2,:) = wheels.curr.corners(2,:) + params.wheelRadius;
+
+
+     
+        line([wheels.curr.corners(1,4) wheels.curr.corners(1,4)],...
+             [wheels.curr.corners(2,4) (wheels.curr.corners(2,4) - F(1))],...
+             'Color','y','LineWidth',4);
+         
+         line([wheels.curr.corners(1,3) wheels.curr.corners(1,3)],...
+             [wheels.curr.corners(2,3) (wheels.curr.corners(2,3) - F(2))],...
+             'Color','y','LineWidth',4);
+       % line(yLeft,'Color','y','LineWidth',10)
+               hold off;
+    
         if p.Results.video 
             M(i) = getframe;
             writeVideo(v,M(i));
         end
     end
-    
-    if p.Results.show_constraint_forces
-        % find the locations of the left and right bottom corners of the
-        % foot        
-        T_board = [cos(boardTheta), -sin(boardTheta), boardX;
-                   sin(boardTheta),  cos(boardTheta), boardY;
-                    0,          0,         1]; 
-            
-            board.home.upp_left.x    = -0.5*params.boardLength;
-            board.home.upp_left.y    = 0.5*params.boardHeight;
 
-            board.home.upp_right.x   = 0.5*params.boardLength;
-            board.home.upp_right.y   = 0.5*params.boardHeight;
-
-            board.home.low_right.x   = 0.5*params.boardLength;
-            board.home.low_right.y   = -0.5*params.boardHeight;
-
-            board.home.low_left.x    = -0.5*params.boardLength;
-            board.home.low_left.y    = -0.5*params.boardHeight;
-
-            board.home.corners = horzcat([board.home.upp_left.x; board.home.upp_left.y; 1],...
-                            [board.home.upp_right.x; board.home.upp_right.y; 1],...
-                            [board.home.low_right.x; board.home.low_right.y; 1],...
-                            [board.home.low_left.x;  board.home.low_left.y; 1]);
-                        
-        board.curr.corners = T_board*board.home.corners;  % the ones we want are in rows 1&2 of columns 2&3
-        % compute the reaction forces at the two corners, assuming that the
-        % x-direction force is distributed between the two according to
-        % their z-direction (normal) forces
-       % Fscale = 2*params.model.geom.foot.hbot/params.model.dyn.body.m/params.g;  % scale factor for visualization
-        board.curr.force.left.y = F(1);
-        board.curr.force.right.y = F(2);
-        % create vectors of x and z ends for both left and right
-        yLeft = [board.curr.corners(1,4),board.curr.corners(2,4) + board.curr.force.left.y];
-        yRight= [board.curr.corners(1,3),board.curr.corners(2,3) + board.curr.force.right.y];
-        % draw the vectors
-        hold on;
-        line(xright,yRight,'Color',params.viz.colors.vectors,'LineWidth',2)
-        hold off;
     end
     
     if p.Results.video

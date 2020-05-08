@@ -1,49 +1,3 @@
-
-%% 
-% Description: Application entry point.
-% 
-% Inputs: none
-% 
-% Outputs: none
-% 
-% Notes:
-%% Initialize environment
-function main 
-clear;
-close all;
-clc;
-
-init_env();
-%% Initialize parameters
-
-params = initial_params;
-global i
-%% Visualize the robot in its initial state
-
-% first five elements are configs (boardX boardY boardTheta bottomLinkTheta topLinkTheta
-% last five are velocities corresponding
-
-boardX_init = 0;
-boardY_init = 0;
-boardTheta_init = 0;
-bottomLinkTheta_init = 0;
-topLinkTheta_init = 0;
-boardDX_init = 0;
-boardDY_init = 0;
-boardDTheta_init = 10;
-bottomLinkDTheta_init = 0;
-topLinkDTheta_init = 0;
-
-
-x_IC = [boardX_init; boardY_init; boardTheta_init;...
-        bottomLinkTheta_init; topLinkTheta_init; ...
-        boardDX_init; boardDY_init; boardDTheta_init;...
-        bottomLinkDTheta_init; topLinkDTheta_init];
-    
-i = 0;
- 
-plot_robot(x_IC,params,'new_fig',false);
-
 %% main.m
 %
 % Description:
@@ -54,18 +8,50 @@ plot_robot(x_IC,params,'new_fig',false);
 % Outputs: none
 %
 % Notes:
-
-
-
 %% Initialize environment
+function main 
+clear;
+close all;
+clc;
 
 init_env();
 
+
 %% Initialize parameters
+
 params = initial_params;
+global i
 
 %% Set up events using odeset
+
 options = odeset('Events',@robot_events);
+%% Visualize the robot in its initial state
+
+% first five elements are configs (boardX boardY boardTheta bottomLinkTheta topLinkTheta
+% last five are velocities corresponding
+
+
+boardX_init = 0;
+boardY_init = 0;
+boardTheta_init = 0;
+bottomLinkTheta_init = 0;
+topLinkTheta_init = 0;
+boardDX_init = 0;
+boardDY_init = 0;
+boardDTheta_init = 0;
+bottomLinkDTheta_init = 0;
+topLinkDTheta_init = 0;
+
+x_IC = [boardX_init; boardY_init; boardTheta_init;...
+        bottomLinkTheta_init; topLinkTheta_init; ...
+        boardDX_init; boardDY_init; boardDTheta_init;...
+        bottomLinkDTheta_init; topLinkDTheta_init];
+    
+i = 0;
+ 
+plot_robot(x_IC,params,'new_fig',false);
+
+
 
 %% Simulate the robot forward in time     
 
@@ -84,6 +70,7 @@ DTheta_Matrix = [];
 DTheta_bottomlink_Matrix = [];
 DTheta_toplink_Matrix = [];
 TotEnergy = [];
+robotCoM_Matrix = [];
 T = [];
 
 
@@ -99,19 +86,19 @@ while tnow < params.sim.tfinal
     tsim = [tsim;tseg];
     xsim = [xsim;xseg];
     tnow = tsim(end);
-    x_IC = xsim(end,:)
+    x_IC = xsim(end,:);
     
     % compute the constraint forces that were active during the jump
-    [Fseg] = constraint_forces(tseg,xseg',params);
+     [Fseg] = constraint_forces(tseg,xseg',params);
      F_list = [F_list,Fseg];
     
     % if simulation terminated before tfinal, determine which constaints
     % are still active, then continue integration
     if tseg(end) < params.sim.tfinal  % termination was triggered by an event
         switch params.sim.constraints
-            case ['true','false']  % the left foot was on the ground prior to termination
+            case ['true', 'false']  % the left foot was on the ground prior to termination
                  params.sim.constraints = ['false','false'];  % now the left foot is off
-            case ['false','true'] % the right foot only was on the ground prior to termination
+            case ['false', 'true'] % the right foot only was on the ground prior to termination
                  params.sim.constraints = ['false','false'];  % now the right foot is off
             case ['true','true'] % both feet were on the ground prior to termination
                  if ie == 1
@@ -152,6 +139,13 @@ plot(T, TotEnergy, 'b-', 'LineWidth', 2);
 ylabel('Energy (J)');
 xlabel('time (sec)');
 hold off
+
+figure;
+plot(robotCoM_Matrix(:,1), robotCoM_Matrix(:,2), 'b-', 'LineWidth', 2);
+xlabel('robotCoM x');
+ylabel('robotCoM y');
+hold off
+
 
 
 
@@ -229,6 +223,8 @@ DTheta_Matrix = [DTheta_Matrix; x(8)]; % matrix keeping track of DTheta for skat
 DTheta_bottomlink_Matrix = [DTheta_bottomlink_Matrix; x(9)];
 DTheta_toplink_Matrix = [DTheta_toplink_Matrix; x(9)];
 TotEnergy = [TotEnergy; TE_now]; % matrix keeping track of total energy
+fkins = fwd_kin(x, params);
+robotCoM_Matrix = [robotCoM_Matrix; fkins(1,4), fkins(2,4)];
 T = [T; t]; % matrix keeping track of time
 
 % build the constraints, forces, and solve for acceleration 
@@ -238,7 +234,7 @@ switch params.sim.constraints
         dx(nq+1:2*nq) = Minv*(Q - H);
         F = [0;0];
     case ['true','false']      % left wheel is on the ground and right is off
-        A = A_all(1,:);
+        A = A_all(1,:);  % the first row of A is all for the left constraint
         Adotqdot = [q_dot'*Hessian(:,:,1)*q_dot];
         Fnow = (A*Minv*A')\(A*Minv*(Q - H) + Adotqdot);
         dx(1:nq) = (eye(nq) - A'*((A*A')\A))*x(6:10);
@@ -251,6 +247,7 @@ switch params.sim.constraints
         dx(1:nq) = (eye(nq) - A'*((A*A')\A))*x(6:10);
         dx(nq+1:2*nq) = Minv*(Q - H - A'*Fnow);
         F = [0;Fnow];
+        
     case ['true','true']      % both wheels are on the ground
         A = A_all([1,2],:);
         Adotqdot = [q_dot'*Hessian(:,:,1)*q_dot;
@@ -259,6 +256,7 @@ switch params.sim.constraints
         dx(1:nq) = (eye(nq) - A'*((A*A')\A))*x(6:10);
         dx(nq+1:2*nq) = Minv*(Q - H - A'*Fnow);
         F = [Fnow(1);Fnow(2)];
+
 end
 
 end
@@ -329,9 +327,9 @@ end
 % 
 % 
 % pause(1); % helps prevent animation from showing up on the wrong figure
-% animate_robot(xsim_passive(1:5,:),params,'trace_board_com',true,...
-%     'trace_bottomLink_com',true,'trace_topLink_com',true,...
-%     'trace_robot_com',true,'video',true);
+% animate_robot(xsim_passive(1:5,:),params,'trace_board_com',''true'',...
+%     'trace_bottomLink_com',''true'','trace_topLink_com',''true'',...
+%     'trace_robot_com',''true'','video',''true'');
 % fprintf('Done passive simulation.\n');
 
 % %% Control the unstable equilibrium with LQR
@@ -379,6 +377,6 @@ end
 % pause(1); % helps prevent animation from showing up on the wrong figure
 % 
 % 
-% animate_robot(xsim_stabilize(1:2,:),params,'trace_cart_com',true,...
-%     'trace_pend_com',true,'trace_pend_tip',true,'video',true);
+% animate_robot(xsim_stabilize(1:2,:),params,'trace_cart_com',''true'',...
+%     'trace_pend_com',''true'','trace_pend_tip',''true'','video',''true'');
 % fprintf('Done passive simulation.\n');

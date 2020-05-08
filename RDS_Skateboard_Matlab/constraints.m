@@ -13,12 +13,12 @@
 
 function [C_all] = constraints(x,params)
 
-% autogen inputs: boardY,boardTheta,boardHeight,wheelRadius
-
+% autogen inputs: boardY,boardTheta,boardHeight,boardLength,wheelRadius)
 
 C_all = autogen_constraints(x(2),...
                             x(3),...
                             params.boardHeight,...
+                            params.boardLength,...
                             params.wheelRadius);
 
 end
