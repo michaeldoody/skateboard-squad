@@ -67,7 +67,6 @@ fprintf('\t...done.\n');
 %% Define kinematics variables
 fprintf('\tInitializing kinematics variables...\n');
 
-% coordinates of the board CoM
 syms boardXCoM boardYCoM real
 
 % coordinate of the bottom link CoM:
@@ -107,7 +106,7 @@ syms boardI bottomLinkI topLinkI real
 
 % Viscous damping at each joint: (add enough that it doesnt flail like
 % crazy)
-b = sym('b',[numel(q),1],'real');
+
 % Note: we'll account for damping at each joint (ground-cart and 
 % cart-pendulum) but we can set each damping constant to 0 later if we
 % want.
@@ -122,28 +121,28 @@ fprintf('\t...done.\n');
 fprintf('\tGenerating forward kinematics equations...\n');
 
 % compute the (x,y) location of the pendulum's center of mass:
-bottomLinkXCoM = boardX + bottomLinkRCoM * sin(boardTheta + bottomLinkTheta + pi); % TODO
-bottomLinkYCoM = boardY + bottomLinkRCoM * cos(boardTheta + bottomLinkTheta); % TODO
 
-topLinkXCoM = boardX + bottomLinkHeight * sin(boardTheta + bottomLinkTheta + pi) + topLinkRCoM * sin(boardTheta + bottomLinkTheta + topLinkTheta + pi); 
-topLinkYCoM = boardY + bottomLinkHeight * cos(boardTheta + bottomLinkTheta) + topLinkRCoM * cos(boardTheta + bottomLinkTheta + topLinkTheta);
+boardXCoM = boardX;
+boardYCoM = boardY + wheelRadius + boardHeight/2;
+
+bottomLinkXCoM = boardXCoM + boardHeight/2 * sin(boardTheta + pi) + bottomLinkRCoM * sin(boardTheta + bottomLinkTheta + pi); % TODO
+bottomLinkYCoM = boardYCoM + boardHeight/2 * cos(boardTheta) + bottomLinkRCoM * cos(boardTheta + bottomLinkTheta); % TODO
+
+topLinkXCoM = boardXCoM + boardHeight/2 * sin(boardTheta + pi) + bottomLinkHeight * sin(boardTheta + bottomLinkTheta + pi) + topLinkRCoM * sin(boardTheta + bottomLinkTheta + topLinkTheta + pi); 
+topLinkYCoM = boardYCoM + boardHeight/2 * cos(boardTheta) + bottomLinkHeight * cos(boardTheta + bottomLinkTheta) + topLinkRCoM * cos(boardTheta + bottomLinkTheta + topLinkTheta);
 
 % compute the (x,y) location of the robot's tip:
-robotTipX = boardX + bottomLinkHeight * sin(boardTheta + bottomLinkTheta + pi) + topLinkHeight * sin(boardTheta + bottomLinkTheta + topLinkTheta + pi); 
-robotTipY = boardY + bottomLinkHeight * cos(boardTheta + bottomLinkTheta) + topLinkHeight * cos(boardTheta + bottomLinkTheta + topLinkTheta);
-
-syms bottomLinkTheta_World topLinkTheta_World real
-bottomLinkTheta_World = bottomLinkTheta + boardTheta + pi;
-topLinkTheta_World = topLinkTheta + bottomLinkTheta_World;
+robotTipX = boardXCoM + boardHeight/2 * sin(boardTheta + pi) + bottomLinkHeight * sin(boardTheta + bottomLinkTheta + pi) + topLinkHeight * sin(boardTheta + bottomLinkTheta + topLinkTheta + pi); 
+robotTipY = boardYCoM + boardHeight/2 * cos(boardTheta) + bottomLinkHeight * cos(boardTheta + bottomLinkTheta) + topLinkHeight * cos(boardTheta + bottomLinkTheta + topLinkTheta);
 
 % robot's CoM
 
-robotXCoM = (boardX * boardMass + bottomLinkXCoM * bottomLinkMass + topLinkXCoM * topLinkMass)/(boardMass + bottomLinkMass + topLinkMass);
-robotYCoM = (boardY * boardMass + bottomLinkYCoM * bottomLinkMass + topLinkYCoM * topLinkMass)/(boardMass + bottomLinkMass + topLinkMass);
+robotXCoM = (boardXCoM * boardMass + bottomLinkXCoM * bottomLinkMass + topLinkXCoM * topLinkMass)/(boardMass + bottomLinkMass + topLinkMass);
+robotYCoM = (boardYCoM * boardMass + bottomLinkYCoM * bottomLinkMass + topLinkYCoM * topLinkMass)/(boardMass + bottomLinkMass + topLinkMass);
 
 % create a 2x4 array to hold all forward kinematics (FK) outputs:
-FK = [boardX, bottomLinkXCoM, topLinkXCoM, robotXCoM, robotTipX;
-      boardY, bottomLinkYCoM, topLinkYCoM, robotYCoM, robotTipY];
+FK = [boardXCoM, bottomLinkXCoM, topLinkXCoM, robotXCoM, robotTipX;
+      boardYCoM, bottomLinkYCoM, topLinkYCoM, robotYCoM, robotTipY];
 
 % generate a MATLAB function to compute all the FK outputs:
 matlabFunction(FK,'File','autogen_fwd_kin');
@@ -156,17 +155,18 @@ fprintf('\t...done.\n');
 fprintf("Initializing constraint variables...\n");
 
 syms boardLeftCornerX boardLeftCornerY boardRightCornerX boardRightCornerY real
+syms constL constR real
 
 % parabola equation to follow: y = aax^2 + bbx + cc
 
-aa = 1;
-bb = 1;
-cc = 0;
+% aa = 1;
+% bb = 1;
+% cc = 0;
 
 
-constL = -boardY + boardHeight/2 * cos(boardTheta) + boardLength/2 * sin(boardTheta);
+constL = -boardYCoM + boardHeight/2 * cos(boardTheta) + boardLength/2 * sin(boardTheta) + wheelRadius * cos(boardTheta);
 
-constR = -boardY + boardHeight/2 * cos(boardTheta) - boardLength/2 * sin(boardTheta);
+constR = -boardYCoM + boardHeight/2 * cos(boardTheta) - boardLength/2 * sin(boardTheta) + wheelRadius * cos(boardTheta);
 
 constraints = [constL; constR];
 
@@ -179,12 +179,11 @@ fprintf('\tGenerating time derivatives of the kinematics equations...\n');
 derivative = @(in)( jacobian(in,[q;dq])*[dq;ddq] );
 
 % CoM velocities:
-syms bottomLinkDXCoM bottomLinkDYCoM topLinkDXCoM topLinkDYCoM ...
-     boardDTheta bottomLinkDTheta topLinkDTheta real
+syms bottomLinkDXCoM bottomLinkDYCoM topLinkDXCoM topLinkDYCoM real
 
 % MAYBE NECCESSARY MAYBE NOT
-boardDX = derivative(boardX); 
-boardDY = derivative(boardY);
+boardDX = derivative(boardXCoM); 
+boardDY = derivative(boardYCoM);
 
 bottomLinkDXCoM = derivative(bottomLinkXCoM);
 bottomLinkDYCoM = derivative(bottomLinkYCoM);
@@ -231,7 +230,7 @@ fprintf('\tGenerating potential energy equation...\n');
 syms boardPE bottomLinkPE topLinkPE PE real
 
 % potential energy of the pendulum:
-boardPE = boardMass * g * boardY;
+boardPE = boardMass * g * boardYCoM;
 bottomLinkPE = bottomLinkMass * g * bottomLinkYCoM;
 topLinkPE = bottomLinkMass * g * topLinkYCoM;
 

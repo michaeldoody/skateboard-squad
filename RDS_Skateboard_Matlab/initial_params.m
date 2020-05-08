@@ -20,7 +20,6 @@ function params = initial_params
     params.boardAngleInit = 0; % radians
     params.boardI = 0.00001; %% REPLACE
     params.boardXInit = 0;
-    
     params.boardLength = 0.4;  % m
     params.boardHeight = 0.063;
     
@@ -45,14 +44,14 @@ function params = initial_params
     params.topLinkWidth = 0.085; % m, average of wide and narrow parts of top link
     params.topLinkHeight = .3;
     params.topLinkXCoM = 0;
-    params.topLinkYCoM = 0.137;
+    params.topLinkYCoM = 0.2;
     
     params.sim.dt = 0.01;
     dt = params.sim.dt;
-    params.sim.tfinal = 1;
+    params.sim.tfinal = 5;
     tfinal = params.sim.tfinal;
     
-    params.g = 1;
+    params.g = 0;
     
     params.bottomMotor.maxTorque = 30.6; % (Nm)
     params.topMotor.maxTorque = 16.2; % (Nm)
@@ -66,18 +65,16 @@ function params = initial_params
     params.bottomMotor.torque = zeros(1, length(0:params.sim.dt:params.sim.tfinal));
     params.topMotor.torque = zeros(1, length(0:params.sim.dt:params.sim.tfinal));
 
-    params.sim.constraints = ['true', 'true'];
+    params.sim.constraints = ['false', 'false'];
     
     
     params.viz.colors.board = [1 0 0];
     params.viz.colors.bottomLink = [0 1 0];
     params.viz.colors.topLink = [0 0 1];
-    params.viz.colors.bottomLinkCoM = [0.75 0.75 0.75];
+    params.viz.colors.boardCoM = [0 0.5 0.5];
+    params.viz.colors.bottomLinkCoM = [0.75 0.75 0];
     params.viz.colors.topLinkCoM = [0.5 0 0.5];
-    params.viz.colors.tracers.boardCoM = [1 1 0];
-    params.viz.colors.tracers.bottomLinkCoM = [1 0 1];
-    params.viz.colors.tracers.topLinkCoM = [0 1 1];
-    params.viz.colors.tracers.robotCoM = 'cyan';
+    params.viz.colors.robotCoM = 'cyan';
 
     params.viz.axis_lims = [-1,1,-1,1];
   
