@@ -46,12 +46,12 @@ function params = initial_params
     params.topLinkXCoM = 0;
     params.topLinkYCoM = 0.2;
     
-    params.sim.dt = 0.01;
+    params.sim.dt = 0.03;
     dt = params.sim.dt;
-    params.sim.tfinal = 1;
+    params.sim.tfinal = 3;
     tfinal = params.sim.tfinal;
     
-    params.g = 1;
+    params.g = 5;
     
     params.bottomMotor.maxTorque = 30.6; % (Nm)
     params.topMotor.maxTorque = 16.2; % (Nm)
@@ -67,7 +67,7 @@ function params = initial_params
    % params.bottomMotor.torque(ceil((length(params.bottomMotor.torque)/2)):ceil(3*length(params.bottomMotor.torque)/4)) = -.01;
     params.topMotor.torque = zeros(1, length(0:params.sim.dt:params.sim.tfinal));
 
-    params.sim.constraints = ['true', 'false'];
+    params.sim.constraints = ['false', 'false'];
     
     
     params.viz.colors.board = [1 0 0];

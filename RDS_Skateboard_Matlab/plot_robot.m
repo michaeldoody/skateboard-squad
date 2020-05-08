@@ -219,25 +219,29 @@ circle(board.curr.corners(1,3), board.curr.corners(2,3), params.wheelRadius, [0.
 hold on
 circle(board.curr.corners(1,4), board.curr.corners(2,4), params.wheelRadius, [0.25, 0.25, 0.25]);
 
-plot(board.curr.com.x, board.curr.com.y,'o','MarkerSize',10,...
-    'MarkerFaceColor',params.viz.colors.boardCoM)
+p1 = plot(board.curr.com.x, board.curr.com.y,'o','MarkerSize',10,...
+    'MarkerFaceColor',params.viz.colors.boardCoM);
 hold on
-plot(bottomLink.curr.com.x, bottomLink.curr.com.y,'o','MarkerSize',10,...
-    'MarkerFaceColor',params.viz.colors.bottomLinkCoM)
+p2 = plot(bottomLink.curr.com.x, bottomLink.curr.com.y,'o','MarkerSize',10,...
+    'MarkerFaceColor',params.viz.colors.bottomLinkCoM);
 hold on
-plot(topLink.curr.com.x, topLink.curr.com.y, 'o', 'MarkerSize', 10,...
+p3 = plot(topLink.curr.com.x, topLink.curr.com.y, 'o', 'MarkerSize', 10,...
     'MarkerFaceColor',params.viz.colors.topLinkCoM);
 hold on;
-plot(robot.curr.com.x, robot.curr.com.y, 'o', 'MarkerSize', 10,...
+p4 = plot(robot.curr.com.x, robot.curr.com.y, 'o', 'MarkerSize', 10,...
     'MarkerFaceColor','cyan');
 hold on
 yline(0);
+hold on
+legend([p1 p2 p3 p4], 'board CoM', 'bottom Link CoM', 'top link CoM',...
+        'aggregate CoM','Location', 'southeast', ...
+        'FontSize',10);
 hold off
 
  
 
 
-axis(params.viz.axis_lims);
+axis(params.viz.axis_lims .* 2);
 daspect([1 1 1]) % no distortion
 
 xlabel('$x$');
