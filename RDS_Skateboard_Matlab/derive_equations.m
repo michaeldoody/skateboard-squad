@@ -198,6 +198,7 @@ topLinkDTheta = derivative(topLinkTheta);
 syms A_all H_constL H_constR real
 
 A_all = jacobian(constraints, q);
+
 H_constL = hessian(constL, q);
 H_constR = hessian(constR, q);
 

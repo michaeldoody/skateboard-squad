@@ -30,14 +30,16 @@ options = odeset('Events',@robot_events);
 % first five elements are configs (boardX boardY boardTheta bottomLinkTheta topLinkTheta
 % last five are velocities corresponding
 
+events = [];
 
-boardX_init = 0;
+
+boardX_init = -1;
 boardY_init = 0;
 boardTheta_init = 0;
 bottomLinkTheta_init = 0;
 topLinkTheta_init = 0;
-boardDX_init = 0; 
-boardDY_init = 3;
+boardDX_init = 2; 
+boardDY_init = 0;
 boardDTheta_init = 0;
 bottomLinkDTheta_init = 0;
 topLinkDTheta_init = 0;
@@ -74,12 +76,15 @@ robotCoM_Matrix = [];
 T = [];
 
 
+
 % create a place for constraint forces
 F = [];
 
 while tnow < params.sim.tfinal
 
     tspan = [tnow params.sim.tfinal];
+    
+    
     [tseg, xseg, ~, ~, ie] = ode45(@robot_dynamics, tspan, x_IC, options);
 
     % augment tsim and xsim; renew ICs
@@ -89,30 +94,24 @@ while tnow < params.sim.tfinal
     x_IC = xsim(end,:);
     
     % compute the constraint forces that were active during the jump
-     [Fseg] = constraint_forces(tseg,xseg',params);
-     F_list = [F_list,Fseg];
-    
-    % if simulation terminated before tfinal, determine which constaints
-    % are still active, then continue integration
-    if tseg(end) < params.sim.tfinal  % termination was triggered by an event
-        switch params.sim.constraints
-            case ['true', 'false']  % the left foot was on the ground prior to termination
-                 params.sim.constraints = ['false','false'];  % now the left foot is off
-            case ['false', 'true'] % the right foot only was on the ground prior to termination
-                 params.sim.constraints = ['false','false'];  % now the right foot is off
-            case ['true','true'] % both feet were on the ground prior to termination
-                 if ie == 1
-                    params.sim.constraints = ['false','true'];  % now the left foot is off
-                 else
-                    params.sim.constraints = ['true','false'];  % now the right foot is off
-                 end
-        end
+    Fseg = zeros(2,length(tseg));
+    for ii=1:length(tseg)
+        [~,Fseg(:,ii)] = robot_dynamics(tseg(ii),xseg(ii,:)');
+         
     end
+    
+    F_list = [F_list,Fseg];
+    
+    
+    if tseg(end) < params.sim.tfinal  % termination was triggered by an event
+        [x_IC] = change_constraints(x_IC,ie);
+    end
+    
+   
 end
 
 %%  Plot Results %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Begin with plot of ground reaction versus weight, to be sure we're
-% pushing off and then leaving the ground
+% Energy plots to make sure it's staying conserved
 figure;
 subplot(2,3,1)
 plot(T, DX_Matrix, 'r-', 'LineWidth', 2);
@@ -144,6 +143,17 @@ figure;
 plot(robotCoM_Matrix(:,1), robotCoM_Matrix(:,2), 'b-', 'LineWidth', 2);
 xlabel('robotCoM x');
 ylabel('robotCoM y');
+hold off
+
+figure;
+subplot(1,2,1)
+plot(tsim, F_list(1,:), 'r-', 'LineWidth', 2);
+ylabel('Left constraint (N)');
+xlabel('time (sec)');
+subplot(1,2,2)
+plot(tsim, F_list(2,:), 'r-', 'LineWidth', 2);
+ylabel('Right constraint (N)');
+xlabel('time (sec)');
 hold off
 
 
@@ -196,7 +206,7 @@ fprintf('Done!\n');
 %   dx: derivative of state x with respect to time.
 %   energy: total energy of the system at state x
 
-function [dx] = robot_dynamics(t,x)
+function [dx, F] = robot_dynamics(t,x)
 
 % for convenience, define q_dot
 dx = zeros(numel(x),1);
@@ -205,9 +215,26 @@ q_dot = x(nq+1:2*nq);
 
 % solve for control inputs at this instant
 
-bottomMotorTorque = interp1(params.bottomMotor.time,params.bottomMotor.torque,t);
-topMotorTorque = interp1(params.topMotor.time,params.topMotor.torque,t);
+
+%% DECIDE WHAT Q IS
+% 
+
+if t > 0.1 && t < 0.15
+    bottomMotorTorque = 0.5*params.bottomMotor.maxTorque;
+    topMotorTorque = 0.5*params.bottomMotor.maxTorque;
+elseif t > 0.15 && t < 0.3
+    bottomMotorTorque = -0.5*params.bottomMotor.maxTorque;
+    topMotorTorque = -0.5*params.bottomMotor.maxTorque;
+else 
+    bottomMotorTorque = 0;
+    topMotorTorque = 0;
+    
+end
+
+
 Q = [0;0;0;bottomMotorTorque;topMotorTorque];
+
+%%
 
 % find the parts that don't depend on constraint forces
 H = H_eom(x,params);
@@ -227,44 +254,85 @@ fkins = fwd_kin(x, params);
 robotCoM_Matrix = [robotCoM_Matrix; fkins(1,4), fkins(2,4)];
 T = [T; t]; % matrix keeping track of time
 
-% build the constraints, forces, and solve for acceleration 
-switch params.sim.constraints  
-    case ['false','false']     % both wheels are off the ground
-        dx(1:nq) = q_dot;
-        dx(nq+1:2*nq) = Minv*(Q - H);
-        F = [0;0];
-    case ['true','false']      % left wheel is on the ground and right is off
-        A = A_all(1,:);  % the first row of A is all for the left constraint
-        Adotqdot = [q_dot'*Hessian(:,:,1)*q_dot];
-        Fnow = (A*Minv*A')\(A*Minv*(Q - H) + Adotqdot);
-        dx(1:nq) = (eye(nq) - A'*((A*A')\A))*x(6:10);
-        dx(nq+1:2*nq) = Minv*(Q - H - A'*Fnow);
-        F = [Fnow;0];
-    case ['false','true']      % right wheel is on the ground and left is off
-        A = A_all(2,:);
-        Adotqdot = [q_dot'*Hessian(:,:,2)*q_dot];
-        Fnow = (A*Minv*A')\(A*Minv*(Q - H) + Adotqdot);
-        dx(1:nq) = (eye(nq) - A'*((A*A')\A))*x(6:10);
-        dx(nq+1:2*nq) = Minv*(Q - H - A'*Fnow);
-        F = [0;Fnow];
+n_active_constraints = sum(params.sim.constraints);
+
+if n_active_constraints == 0  % if there are no constraints active, then there are no forces
+    
+    F_active = zeros(2,1);
+    dx(1:nq) = q_dot;
+    dx(nq+1:2*nq) = Minv*(Q - H);
+    
+else  % if there are constraints active, we must compute the constraint forces
+    % initialize A and Adotqdot
+    A = [];
+    Adotqdot = [];
+    
+    % build A and Adotqdot, starting with unilateral constraints
+    for ic=1:2    % cycle through all of the unilateral constraints
+        if params.sim.constraints(ic) == 1    % if a constraint is active, add to A and Adotqdot
+            A = [A;A_all(ic,:)];
+            Adotqdot = [Adotqdot;q_dot'*Hessian(:,:,ic)*q_dot];
+       end
+    end
+    
+    % compute the constraint forces and accelerations
+    F_active = (A*Minv*A')\(A*Minv*(Q - H) + Adotqdot);   % these are all the forces
+    dx(1:nq) = (eye(nq) - A'*((A*A')\A))*x(nq+1:2*nq);
+    dx(nq+1:2*nq) = Minv*(Q - H - A'*F_active);
         
-    case ['true','true']      % both wheels are on the ground
-        A = A_all([1,2],:);
-        Adotqdot = [q_dot'*Hessian(:,:,1)*q_dot;
-                    q_dot'*Hessian(:,:,2)*q_dot];
-        Fnow = (A*Minv*A')\(A*Minv*(Q - H) + Adotqdot);
-        dx(1:nq) = (eye(nq) - A'*((A*A')\A))*x(6:10);
-        dx(nq+1:2*nq) = Minv*(Q - H - A'*Fnow);
-        F = [Fnow(1);Fnow(2)];
+end
+
+
+% do other things:  either create a force vector or an events vector
+if nargout>1  % create a 2x1 vector of forces for plotting 
+    F = constraint_forces(F_active,params);
+else  % populate the events vector
+    events = update_events(x,F_active,params);
+end
+
+
+
+
 
 end
 
-end
+% % build the constraints, forces, and solve for acceleration 
+% switch params.sim.constraints  
+%     case ['false','false']     % both wheels are off the ground
+%         dx(1:nq) = q_dot;
+%         dx(nq+1:2*nq) = Minv*(Q - H);
+%         F = [0;0];
+%     case ['true','false']      % left wheel is on the ground and right is off
+%         A = A_all(1,:);  % the first row of A is all for the left constraint
+%         Adotqdot = [q_dot'*Hessian(:,:,1)*q_dot];
+%         Fnow = (A*Minv*A')\(A*Minv*(Q - H) + Adotqdot);
+%         dx(1:nq) = (eye(nq) - A'*((A*A')\A))*x(6:10);
+%         dx(nq+1:2*nq) = Minv*(Q - H - A'*Fnow);
+%         F = [Fnow;0];
+%     case ['false','true']      % right wheel is on the ground and left is off
+%         A = A_all(2,:);
+%         Adotqdot = [q_dot'*Hessian(:,:,2)*q_dot];
+%         Fnow = (A*Minv*A')\(A*Minv*(Q - H) + Adotqdot);
+%         dx(1:nq) = (eye(nq) - A'*((A*A')\A))*x(6:10);
+%         dx(nq+1:2*nq) = Minv*(Q - H - A'*Fnow);
+%         F = [0;Fnow];
+%         
+%     case ['true','true']      % both wheels are on the ground
+%         A = A_all([1,2],:);
+%         Adotqdot = [q_dot'*Hessian(:,:,1)*q_dot;
+%                     q_dot'*Hessian(:,:,2)*q_dot];
+%         Fnow = (A*Minv*A')\(A*Minv*(Q - H) + Adotqdot);
+%         dx(1:nq) = (eye(nq) - A'*((A*A')\A))*x(6:10);
+%         dx(nq+1:2*nq) = Minv*(Q - H - A'*Fnow);
+%         F = [Fnow(1);Fnow(2)];
+% 
+% end
+
 %% end of robot_dynamics.m
 
 
 %% Event function for ODE45 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Description:
+%  Description:
 %   Event function that is called when a constraint becomes inactive (or, in the future, active) 
 %
 % Inputs:
@@ -277,28 +345,67 @@ end
 %   direction
 function [value,isterminal,direction] = robot_events(~,~)
 
-    switch params.sim.constraints  
-        case ['false','false']      % both feet are off the ground
-            value = 1;
-            isterminal = 0;
-            direction = 0;
-        case ['true','false']      % left foot is on the ground and right is off
-            value = F(1);
-            isterminal = 1;
-            direction = -1;
-        case ['false','true']      % right foot is on the ground and left is off
-            value = F(2);
-            isterminal = 1;
-            direction = -1;
-        case ['true','true']      % both feet are on the ground
-            value = [F(1);F(2)];
-            isterminal = ones(2,1);
-            direction = -ones(2,1);
-    end
-
+   value = events;
+   isterminal = ones(2,1);
+   direction = -ones(2,1);
 
 end
 %% end of robot_events.m 
+
+%% change_constraints.m
+%
+% Description:
+%   function to handle changes in constraints, depending on the current
+%   status of params.sim.constraints as well as ie, the index of the last
+%   event to occur
+%
+% Inputs:
+%   x_IC: the current state of the robot, which will be the initial
+%   conditions for the next segment of integration
+%   ie: the index of events returned by robot_events.m
+%
+% Outputs:
+%   x_IC: the current state of the robot, which might be updated if the
+%   event that occurred was a collision
+
+function [x_IC] = change_constraints(x_IC,ie)
+
+A = [];
+restitution = [];
+collision = 0;
+
+for i1 = 1:length(ie)  % I'm not sure if ie is ever a vector ... just being sure!
+    if params.sim.constraints(ie(i1)) == 1  % if the event came from an active constraint
+        params.sim.constraints(ie(i1)) = 0; % then make the constraint inactive
+    else    % the event came from an inactive constraint --> collision
+        collision = 1;
+        params.sim.constraints(ie(i1)) = 1; % make the constraint active
+        % find the constraint jacobian
+        [A_all,~] = constraint_derivatives(x_IC,params);
+        A = [A;A_all(ie(i1),:)];
+        restitution = [restitution,1+params.sim.restitution(ie(i1))];
+    end
+end
+
+if collision == 1
+    Minv = inv_mass_matrix(x_IC,params);
+    % compute the change in velocity due to collision impulses
+    x_IC(6:10) = x_IC(6:10) - (Minv*A'*inv(A*Minv*A')*diag(restitution)*A*x_IC(6:10)')';
+    % Often in a collision, the constraint forces will be violated
+    % immediately, rendering event detection useless since it requires a
+    % smoothly changing variable.  Therefore, we need to check the
+    % constraint forces and turn them off if they act in the wrong
+    % direction
+    [~,F] = robot_dynamics(0,x_IC');
+    for i1=1:2
+        if F(i1)<0, params.sim.constraints(i1) = 0; end  % turn off unilateral constraints with negative forces
+    end
+end
+
+end
+%% end of change_constraints.m %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
 %% End of main.m
 end
 
@@ -307,76 +414,3 @@ end
 
 
 
-% 
-% 
-% tspan_passive = 0:params.sim.dt:5;
-% [tsim_passive, xsim_passive] = ode45(@(t,x) robot_dynamics(...
-%     t,x,[0;0],params,'controller','passive'),...
-%     tspan_passive, x_IC');
-% 
-% size(xsim_passive)
-% 
-% % tranpose xsim_passive so that it is 4xN (N = number of timesteps):
-% xsim_passive = xsim_passive'; % required by animate_robot.m
-% 
-% figure;
-% subplot(2,1,1), plot(tsim_passive,xsim_passive(1,:),'b-',...
-%                      tsim_passive,xsim_passive(2,:),'r-','LineWidth',2);
-% subplot(2,1,2), plot(tsim_passive,xsim_passive(3,:),'b:',...
-%                      tsim_passive,xsim_passive(4,:),'r:','LineWidth',2);
-% 
-% 
-% pause(1); % helps prevent animation from showing up on the wrong figure
-% animate_robot(xsim_passive(1:5,:),params,'trace_board_com',''true'',...
-%     'trace_bottomLink_com',''true'','trace_topLink_com',''true'',...
-%     'trace_robot_com',''true'','video',''true'');
-% fprintf('Done passive simulation.\n');
-
-% %% Control the unstable equilibrium with LQR
-% A = upright_state_matrix(params);
-% B = upright_input_matrix(params);
-% 
-% % numerical verify the rank of the controllability matrix:
-% Co = [B, A*B, (A^2)*B, (A^3)*B];
-% fprintf('rank(Co) = %d.\n',rank(Co));
-% 
-% % control design: weights Q and R:
-% Q = diag([5000,100,1,1]);    % weight on regulation error
-% R = 1;                  % weight on control effort
-% 
-% % compute and display optimal feedback gain matrix K:
-% K = lqr(A,B,Q,R);
-% buf = '';
-% for i = 1:size(K,2)
-%     buf = [buf,'%5.3f '];
-% end
-% buf = [buf,'\n'];
-% fprintf('LQR: K = \n');
-% fprintf(buf,K');
-% 
-% % we could ask what are the eigenvalues of the closed-loop system:
-% eig(A - B*K)
-% 
-% % add K to our struct "params":
-% params.control.inverted.K = K;
-% 
-% % Simulate the robot under this controller:
-% tspan_stabilize = 0:params.sim.dt:5;
-% [tsim_stabilize, xsim_stabilize] = ode45(@(t,x) robot_dynamics(...
-%     t,x,0,params,'controller','stabilize'),...
-%     tspan_stabilize, x_IC');
-% 
-% % tranpose xsim_passive so that it is 4xN (N = number of timesteps):
-% xsim_stabilize = xsim_stabilize'; % required by animate_robot.m
-% 
-% figure;
-% subplot(2,1,1), plot(tsim_stabilize,xsim_stabilize(1,:),'b-',...
-%                      tsim_stabilize,xsim_stabilize(2,:),'r-','LineWidth',2);
-% subplot(2,1,2), plot(tsim_stabilize,xsim_stabilize(3,:),'b:',...
-%                      tsim_stabilize,xsim_stabilize(4,:),'r:','LineWidth',2);
-% pause(1); % helps prevent animation from showing up on the wrong figure
-% 
-% 
-% animate_robot(xsim_stabilize(1:2,:),params,'trace_cart_com',''true'',...
-%     'trace_pend_com',''true'','trace_pend_tip',''true'','video',''true'');
-% fprintf('Done passive simulation.\n');

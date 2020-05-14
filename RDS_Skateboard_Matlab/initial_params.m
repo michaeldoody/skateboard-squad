@@ -46,12 +46,12 @@ function params = initial_params
     params.topLinkXCoM = 0;
     params.topLinkYCoM = 0.2;
     
-    params.sim.dt = 0.03;
+    params.sim.dt = 0.015;
     dt = params.sim.dt;
-    params.sim.tfinal = 3;
+    params.sim.tfinal = 1.5;
     tfinal = params.sim.tfinal;
     
-    params.g = 5;
+    params.g = 1;
     
     params.bottomMotor.maxTorque = 30.6; % (Nm)
     params.topMotor.maxTorque = 16.2; % (Nm)
@@ -62,12 +62,12 @@ function params = initial_params
     params.bottomMotor.time = 0:dt:tfinal;
     params.topMotor.time = 0:dt:tfinal;
     
-    params.bottomMotor.torque = zeros(1, length(0:params.sim.dt:params.sim.tfinal));
-   % params.bottomMotor.torque(floor((length(params.bottomMotor.torque)/4)):floor(length(params.bottomMotor.torque)/2)) = .01;
-   % params.bottomMotor.torque(ceil((length(params.bottomMotor.torque)/2)):ceil(3*length(params.bottomMotor.torque)/4)) = -.01;
-    params.topMotor.torque = zeros(1, length(0:params.sim.dt:params.sim.tfinal));
-
-    params.sim.constraints = ['false', 'false'];
+    params.bottomMotor.torque = zeros(1, length(params.bottomMotor.time));
+    params.topMotor.torque = zeros(1, length(params.topMotor.time));
+     
+    params.sim.constraints = [1, 1]; % left and right
+    params.sim.restitution = [0.0, 0.0];
+    params.sim.trick = 'manual';
     
     
     params.viz.colors.board = [1 0 0];
@@ -79,5 +79,7 @@ function params = initial_params
     params.viz.colors.robotCoM = 'cyan';
 
     params.viz.axis_lims = [-1,1,-1,1];
+    
+    
   
 end
