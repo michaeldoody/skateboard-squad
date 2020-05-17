@@ -18,20 +18,19 @@ function params = initial_params
 
     params.boardMass = 0.85; % kg
     params.boardAngleInit = 0; % radians
-    params.boardI = 0.00001; %% REPLACE
     params.boardXInit = 0;
     params.boardLength = 0.4;  % m
     params.boardHeight = 0.063;
-    
+    params.boardI = params.boardMass*(params.boardLength^2 + params.boardHeight^2)/12; %% Colgate replaced 
     params.wheelRadius = 0.03;
     
 % Bottom Link Parameters
 
     params.bottomLinkMass = 1.124;
-    params.bottomLinkI = 0.0001; %% REPLACE
     params.bottomLinkTheta = 0; % wrt the skateboard, with 0 being positive x
     params.bottomLinkWidth = 0.04;
     params.bottomLinkHeight = .2;
+    params.bottomLinkI = params.bottomLinkMass*(params.bottomLinkWidth^2 + params.bottomLinkHeight^2)/12; %% Colgate replaced
     params.bottomLinkXCoM = 0;
     params.bottomLinkYCoM = .107; % m, taken wrt the joint with the skateboard
     
@@ -39,10 +38,10 @@ function params = initial_params
 % Top Link Parameters
 
     params.topLinkMass = 2; % kg
-    params.topLinkI = 0.0002; % REPLACE
     params.topLinkTheta = 0; % wrt the first link, with 0 being stright up (positive y)
     params.topLinkWidth = 0.085; % m, average of wide and narrow parts of top link
     params.topLinkHeight = .3;
+    params.topLinkI = params.topLinkMass*(params.topLinkWidth^2 + params.topLinkHeight^2)/12; % Colgate replaced
     params.topLinkXCoM = 0;
     params.topLinkYCoM = 0.2;
     
@@ -51,7 +50,7 @@ function params = initial_params
     params.sim.tfinal = 1.5;
     tfinal = params.sim.tfinal;
     
-    params.g = 1;
+    params.g = 10;
     
     params.bottomMotor.maxTorque = 30.6; % (Nm)
     params.topMotor.maxTorque = 16.2; % (Nm)
@@ -65,9 +64,12 @@ function params = initial_params
     params.bottomMotor.torque = zeros(1, length(params.bottomMotor.time));
     params.topMotor.torque = zeros(1, length(params.topMotor.time));
      
-    params.sim.constraints = [1, 1]; % left and right
+    params.sim.constraints = logical([0, 0]); % left and right
     params.sim.restitution = [0.0, 0.0];
-    params.sim.trick = 'manual';
+    params.sim.trick = 'ramp';
+    params.sim.gain = 500;
+    
+    params.trackRadius = 2;
     
     
     params.viz.colors.board = [1 0 0];
@@ -77,6 +79,7 @@ function params = initial_params
     params.viz.colors.bottomLinkCoM = [0.75 0.75 0];
     params.viz.colors.topLinkCoM = [0.5 0 0.5];
     params.viz.colors.robotCoM = 'cyan';
+    params.viz.colors.trackers = [0.2 0 0];
 
     params.viz.axis_lims = [-1,1,-1,1];
     

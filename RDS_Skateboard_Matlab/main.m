@@ -33,25 +33,34 @@ options = odeset('Events',@robot_events);
 events = [];
 
 
-boardX_init = -1;
+boardX_init = 0;
 boardY_init = 0;
 boardTheta_init = 0;
 bottomLinkTheta_init = 0;
 topLinkTheta_init = 0;
-boardDX_init = 2; 
-boardDY_init = 0;
+boardDX_init = 0; 
+boardDY_init = 3;
 boardDTheta_init = 0;
 bottomLinkDTheta_init = 0;
 topLinkDTheta_init = 0;
 
+
+
+thetaRamp = asin((params.boardLength/2)/params.trackRadius);
+trackLeftS_init = -params.trackRadius*thetaRamp;
+trackRightS_init = params.trackRadius*thetaRamp;
+
 x_IC = [boardX_init; boardY_init; boardTheta_init;...
         bottomLinkTheta_init; topLinkTheta_init; ...
         boardDX_init; boardDY_init; boardDTheta_init;...
-        bottomLinkDTheta_init; topLinkDTheta_init];
+        bottomLinkDTheta_init; topLinkDTheta_init;...
+        trackLeftS_init; trackRightS_init];
     
 i = 0;
+
+x_IC_plot = x_IC([1:5,11,12]);
  
-plot_robot(x_IC,params,'new_fig',false);
+plot_robot(x_IC_plot,params,'new_fig',false);
 
 
 
@@ -178,7 +187,7 @@ x_anim = x_anim'; % transpose so that xsim is 10xN (N = number of timesteps)
 F_anim = interp1(tsim,F_list',t_anim);
 F_anim = F_anim';
 
-animate_robot(x_anim(1:5,:), F_anim, params,'trace_board_com',true,...
+animate_robot(x_anim([1:5,11,12],:), F_anim, params,'trace_board_com',true,...
     'trace_bottomLink_com',true,'trace_topLink_com',true,'trace_robot_com',...
      true,'show_constraint_forces',true,'video',true);
 fprintf('Done!\n');
@@ -210,27 +219,31 @@ function [dx, F] = robot_dynamics(t,x)
 
 % for convenience, define q_dot
 dx = zeros(numel(x),1);
-nq = numel(x)/2;    % assume that x = [q;q_dot];
+nq = numel(x)/2-1;    % assume that x = [q;q_dot; s(1); s(2)];
 q_dot = x(nq+1:2*nq);
+s = x(2*nq+1:2*nq+2);
+
 
 % solve for control inputs at this instant
 
 
 %% DECIDE WHAT Q IS
 % 
-
-if t > 0.1 && t < 0.15
-    bottomMotorTorque = 0.5*params.bottomMotor.maxTorque;
-    topMotorTorque = 0.5*params.bottomMotor.maxTorque;
-elseif t > 0.15 && t < 0.3
-    bottomMotorTorque = -0.5*params.bottomMotor.maxTorque;
-    topMotorTorque = -0.5*params.bottomMotor.maxTorque;
-else 
-    bottomMotorTorque = 0;
-    topMotorTorque = 0;
-    
-end
-
+% 
+% if t > 0.1 && t < 0.15
+%     bottomMotorTorque = 0.5*params.bottomMotor.maxTorque;
+%     topMotorTorque = 0.5*params.bottomMotor.maxTorque;
+% elseif t > 0.15 && t < 0.3
+%     bottomMotorTorque = -0.5*params.bottomMotor.maxTorque;
+%     topMotorTorque = -0.5*params.bottomMotor.maxTorque;
+% else 
+%     bottomMotorTorque = 0;
+%     topMotorTorque = 0;
+%     
+% end
+ 
+bottomMotorTorque = 0;
+topMotorTorque = 0;
 
 Q = [0;0;0;bottomMotorTorque;topMotorTorque];
 
@@ -239,7 +252,7 @@ Q = [0;0;0;bottomMotorTorque;topMotorTorque];
 % find the parts that don't depend on constraint forces
 H = H_eom(x,params);
 Minv = inv_mass_matrix(x,params);
-[A_all,Hessian] = constraint_derivatives(x,params);
+[A,Hessian] = constraint_derivatives(x,params);
 
 % compute energy
 
@@ -248,85 +261,53 @@ DX_Matrix = [DX_Matrix; x(6)]; % matrix keeping track of DX for skateboard
 DY_Matrix = [DY_Matrix; x(7)]; % matrix keeping track of DY for skateboard
 DTheta_Matrix = [DTheta_Matrix; x(8)]; % matrix keeping track of DTheta for skateboard
 DTheta_bottomlink_Matrix = [DTheta_bottomlink_Matrix; x(9)];
-DTheta_toplink_Matrix = [DTheta_toplink_Matrix; x(9)];
+DTheta_toplink_Matrix = [DTheta_toplink_Matrix; x(10)];
 TotEnergy = [TotEnergy; TE_now]; % matrix keeping track of total energy
 fkins = fwd_kin(x, params);
 robotCoM_Matrix = [robotCoM_Matrix; fkins(1,4), fkins(2,4)];
 T = [T; t]; % matrix keeping track of time
 
 n_active_constraints = sum(params.sim.constraints);
+F = zeros(2,1);
 
 if n_active_constraints == 0  % if there are no constraints active, then there are no forces
     
-    F_active = zeros(2,1);
     dx(1:nq) = q_dot;
     dx(nq+1:2*nq) = Minv*(Q - H);
     
 else  % if there are constraints active, we must compute the constraint forces
-    % initialize A and Adotqdot
-    A = [];
-    Adotqdot = [];
-    
-    % build A and Adotqdot, starting with unilateral constraints
-    for ic=1:2    % cycle through all of the unilateral constraints
-        if params.sim.constraints(ic) == 1    % if a constraint is active, add to A and Adotqdot
-            A = [A;A_all(ic,:)];
-            Adotqdot = [Adotqdot;q_dot'*Hessian(:,:,ic)*q_dot];
-       end
+    A = A(params.sim.constraints,:);   % eliminate inactive rows
+    Hessian_active = Hessian(:,:,params.sim.constraints);  % eliminate inactive hessians
+    Adotqdot = zeros(n_active_constraints,1);
+    for ic=1:n_active_constraints
+        Adotqdot(ic) = q_dot'*Hessian_active(:,:,ic)*q_dot;
     end
     
     % compute the constraint forces and accelerations
-    F_active = (A*Minv*A')\(A*Minv*(Q - H) + Adotqdot);   % these are all the forces
+    F_active = (A*Minv*A')\(A*Minv*(Q - H) + Adotqdot);   % these are the constraint forces
     dx(1:nq) = (eye(nq) - A'*((A*A')\A))*x(nq+1:2*nq);
     dx(nq+1:2*nq) = Minv*(Q - H - A'*F_active);
-        
-end
 
-
-% do other things:  either create a force vector or an events vector
-if nargout>1  % create a 2x1 vector of forces for plotting 
-    F = constraint_forces(F_active,params);
-else  % populate the events vector
-    events = update_events(x,F_active,params);
-end
-
-
-
-
+    % 4x1 vector of constraint forces
+    F(params.sim.constraints) = F_active;   
 
 end
 
-% % build the constraints, forces, and solve for acceleration 
-% switch params.sim.constraints  
-%     case ['false','false']     % both wheels are off the ground
-%         dx(1:nq) = q_dot;
-%         dx(nq+1:2*nq) = Minv*(Q - H);
-%         F = [0;0];
-%     case ['true','false']      % left wheel is on the ground and right is off
-%         A = A_all(1,:);  % the first row of A is all for the left constraint
-%         Adotqdot = [q_dot'*Hessian(:,:,1)*q_dot];
-%         Fnow = (A*Minv*A')\(A*Minv*(Q - H) + Adotqdot);
-%         dx(1:nq) = (eye(nq) - A'*((A*A')\A))*x(6:10);
-%         dx(nq+1:2*nq) = Minv*(Q - H - A'*Fnow);
-%         F = [Fnow;0];
-%     case ['false','true']      % right wheel is on the ground and left is off
-%         A = A_all(2,:);
-%         Adotqdot = [q_dot'*Hessian(:,:,2)*q_dot];
-%         Fnow = (A*Minv*A')\(A*Minv*(Q - H) + Adotqdot);
-%         dx(1:nq) = (eye(nq) - A'*((A*A')\A))*x(6:10);
-%         dx(nq+1:2*nq) = Minv*(Q - H - A'*Fnow);
-%         F = [0;Fnow];
-%         
-%     case ['true','true']      % both wheels are on the ground
-%         A = A_all([1,2],:);
-%         Adotqdot = [q_dot'*Hessian(:,:,1)*q_dot;
-%                     q_dot'*Hessian(:,:,2)*q_dot];
-%         Fnow = (A*Minv*A')\(A*Minv*(Q - H) + Adotqdot);
-%         dx(1:nq) = (eye(nq) - A'*((A*A')\A))*x(6:10);
-%         dx(nq+1:2*nq) = Minv*(Q - H - A'*Fnow);
-%         F = [Fnow(1);Fnow(2)];
-% 
-% end
+[leftWheelPos,rightWheelPos] = wheel_coordinates(x,params);
+[leftWheelVelo,rightWheelVelo] = wheel_velocities(x,params);
+[p_l,t_l,~] = track(s(1),params);
+[p_r,t_r,~] = track(s(2),params);
+
+dx(2*nq+1) = (leftWheelVelo + params.sim.gain*(leftWheelPos - p_l))'*t_l;
+dx(2*nq+2) = (rightWheelVelo + params.sim.gain*(rightWheelPos - p_r))'*t_r;
+
+
+C = constraints(x,params);
+events = F;
+events(~params.sim.constraints) = -C(~params.sim.constraints);
+
+end
+
 
 %% end of robot_dynamics.m
 
@@ -398,7 +379,7 @@ if collision == 1
     % direction
     [~,F] = robot_dynamics(0,x_IC');
     for i1=1:2
-        if F(i1)<0, params.sim.constraints(i1) = 0; end  % turn off unilateral constraints with negative forces
+        if F(i1)<10^-6, params.sim.constraints(i1) = 0; end  % turn off unilateral constraints with negative forces
     end
 end
 

@@ -13,13 +13,25 @@
 
 function [C_all] = constraints(x,params)
 
-% autogen inputs: boardY,boardTheta,boardHeight,boardLength,wheelRadius)
+[p_l,~,n_l] = track(x(11),params);
+[p_r,~,n_r] = track(x(12),params);
 
-C_all = autogen_constraints(x(2),...
-                            x(3),...
-                            params.boardHeight,...
-                            params.boardLength,...
-                            params.wheelRadius);
+pLeftX = p_l(1);
+pLeftY = p_l(2);
+pRightX = p_r(1);
+pRightY = p_r(2);
+normLeftX = n_l(1);
+normLeftY = n_l(2);
+normRightX = n_r(1);
+normRightY = n_r(2);
+
+%boardX,boardY,boardTheta,boardHeight,boardLength,normLeftX,normLeftY,
+%normRightX,normRightY,pLeftX,pLeftY,pRightX,pRightY,wheelRadius)
+
+C_all = autogen_constraints(x(1), x(2), x(3), params.boardHeight,...
+                            params.boardLength, normLeftX, normLeftY,...
+                            normRightX, normRightY, pLeftX, pLeftY,...
+                            pRightX, pRightY, params.wheelRadius);
 
 end
 

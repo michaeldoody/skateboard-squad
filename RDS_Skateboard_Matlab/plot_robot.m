@@ -44,6 +44,18 @@ parse(p, q, params, varargin{:});
 % Verification: display the results of parsing:
 % disp(p.Results)
 
+svec = linspace(-params.trackRadius*pi/2,params.trackRadius*pi/2,100);
+track_shape = zeros(2,length(svec));
+for i1=1:length(svec)
+    [track_shape(:,i1),~,~] = track(svec(i1),params);
+end
+
+%% for convenience, define each generalized coordinate
+
+
+[pLeftWheel,~,~] = track(q(6),params)
+[pRightWheel,~,~] = track(q(7),params)
+
 
 %% Compute the 4 corners of the cart, clockwise from top left corner
 % First compute the cart's home position (q(1) = 0):
@@ -209,6 +221,9 @@ if p.Results.new_fig
     figure;
 end
 
+plot(track_shape(1,:),track_shape(2,:),'-k');
+hold on;
+
 fill(board.curr.corners(1,:),board.curr.corners(2,:),params.viz.colors.board);
 hold on;
 fill(bottomLink.curr.corners(1,:),bottomLink.curr.corners(2,:),params.viz.colors.bottomLink);
@@ -231,7 +246,13 @@ hold on;
 p4 = plot(robot.curr.com.x, robot.curr.com.y, 'o', 'MarkerSize', 10,...
     'MarkerFaceColor','cyan');
 hold on
-yline(0);
+plot(pLeftWheel(1),pLeftWheel(2),'o','MarkerSize',6,...
+    'MarkerFaceColor',params.viz.colors.trackers,...
+    'MarkerEdgeColor',params.viz.colors.trackers);
+hold on
+plot(pRightWheel(1),pRightWheel(2),'o','MarkerSize',6,...
+    'MarkerFaceColor',params.viz.colors.trackers,...
+    'MarkerEdgeColor',params.viz.colors.trackers);
 hold on
 legend([p1 p2 p3 p4], 'board CoM', 'bottom Link CoM', 'top link CoM',...
         'aggregate CoM','Location', 'southeast', ...

@@ -33,7 +33,7 @@ p = inputParser;
 % Step 2: create the parsing schema:
 %   2a: required inputs:
 addRequired(p,'robot_config', ...
-    @(q) isnumeric(q_list) && size(q_list,1)==5);
+    @(q) isnumeric(q_list) && size(q_list,1)==7);
 addRequired(p,'constraint_forces', ...
     @(q) isnumeric(F_list) && size(F_list,1)==2);
 addRequired(p,'robot_params', ...
@@ -92,6 +92,8 @@ end
         boardTheta = q(3);
         bottomLinkTheta = q(4);
         topLinkTheta = q(5);
+        [p_l,~,n_l] = track(q(6),params);
+        [p_r,~,n_r] = track(q(7),params);
         F = F_list(:,i);
        
         if tracing
@@ -186,12 +188,12 @@ wheels.curr.corners(2,:) = wheels.curr.corners(2,:) + params.wheelRadius;
 
      
         p5 = line([wheels.curr.corners(1,4) wheels.curr.corners(1,4)],...
-             [wheels.curr.corners(2,4) (wheels.curr.corners(2,4) - F(1))],...
-             'Color','y','LineWidth',4);
+             [wheels.curr.corners(2,4) (wheels.curr.corners(2,4) - 0.07*F(1))],...
+             'Color','k','LineWidth',4);
          
          p6 = line([wheels.curr.corners(1,3) wheels.curr.corners(1,3)],...
-             [wheels.curr.corners(2,3) (wheels.curr.corners(2,3) - F(2))],...
-             'Color','y','LineWidth',4);
+             [wheels.curr.corners(2,3) (wheels.curr.corners(2,3) - 0.07*F(2))],...
+             'Color','k','LineWidth',4);
        % line(yLeft,'Color','y','LineWidth',10)
                hold off;
                

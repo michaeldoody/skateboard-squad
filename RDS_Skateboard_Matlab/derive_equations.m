@@ -151,22 +151,28 @@ fprintf('\t...done.\n');
 
 fprintf("Initializing constraint variables...\n");
 
-syms boardLeftCornerX boardLeftCornerY boardRightCornerX boardRightCornerY real
+syms boardLeftX boardLeftY boardRightX boardRightY real
+syms pLeftX pLeftY pRightX pRightY normLeftX normLeftY normRightX normRightY real
 syms constL constR real
 
-% parabola equation to follow: y = aax^2 + bbx + cc
+boardLeftX =  boardX + boardHeight/2 * sin(boardTheta) - boardLength/2 * cos(boardTheta) + wheelRadius * sin(boardTheta);
 
-% aa = 1;
-% bb = 1;
-% cc = 0;
+boardLeftY = boardY - boardHeight/2 * cos(boardTheta)  - boardLength/2 * sin(boardTheta) - wheelRadius * cos(boardTheta);
+
+boardRightX = boardX + boardHeight/2 * sin(boardTheta) + boardLength/2 * cos(boardTheta) + wheelRadius * sin(boardTheta) ;
+
+boardRightY = boardY - boardHeight/2 * cos(boardTheta) + boardLength/2 * sin(boardTheta) - wheelRadius * cos(boardTheta);
 
 
-constL = -boardY + boardHeight/2 * cos(boardTheta) + boardLength/2 * sin(boardTheta) + wheelRadius * cos(boardTheta);
+FK_leftWheel = [boardLeftX;boardLeftY];
+FK_rightWheel = [boardRightX;boardRightY];
 
-constR = -boardY + boardHeight/2 * cos(boardTheta) - boardLength/2 * sin(boardTheta) + wheelRadius * cos(boardTheta);
+constL = (boardLeftX - pLeftX)*normLeftX + (boardLeftY - pLeftY)*normLeftY;
+constR = (boardRightX - pRightX)*normRightX + (boardRightY - pRightY)*normRightY;
 
 constraints = [constL; constR];
 
+matlabFunction(FK_leftWheel,FK_rightWheel,'File','autogen_fk_wheels');
 matlabFunction(constraints,'File','autogen_constraints');
 
 %% Derivatives
@@ -177,6 +183,7 @@ derivative = @(in)( jacobian(in,[q;dq])*[dq;ddq] );
 
 % CoM velocities:
 syms boardDXCoM boardDYCoM bottomLinkDXCoM bottomLinkDYCoM topLinkDXCoM topLinkDYCoM real
+syms leftWheelDFK rightWheelDFK real
 
 % MAYBE NECCESSARY MAYBE NOT
 boardDX = derivative(boardX); 
@@ -195,6 +202,10 @@ bottomLinkDTheta = derivative(bottomLinkTheta);
 topLinkDTheta = derivative(topLinkTheta);
 
 
+leftWheelDFK = jacobian(FK_leftWheel,q)*dq;
+rightWheelDFK = jacobian(FK_rightWheel,q)*dq;
+
+
 syms A_all H_constL H_constR real
 
 A_all = jacobian(constraints, q);
@@ -202,6 +213,7 @@ A_all = jacobian(constraints, q);
 H_constL = hessian(constL, q);
 H_constR = hessian(constR, q);
 
+matlabFunction(leftWheelDFK,rightWheelDFK,'File','autogen_wheel_velocities');
 matlabFunction(bottomLinkDXCoM, bottomLinkDYCoM, topLinkDXCoM, topLinkDYCoM, 'File', 'autogen_CoM_velocities');
 matlabFunction(A_all, H_constL, H_constR, 'File', 'autogen_constraint_derivatives');
 
@@ -213,7 +225,7 @@ fprintf('\tGenerating kinetic energy equation...\n');
 syms boardKE bottomLinkKE topLinkKE KE real
 
 % kinetic energy of each body ONLY TRANSLATION:
-boardKE = (1/2 * boardMass * boardDX^2+boardDY^2) + (1/2 * boardI * boardDTheta^2);
+boardKE = 1/2 * boardMass * (boardDX^2+boardDY^2) + (1/2 * boardI * boardDTheta^2);
 bottomLinkKE = (1/2* bottomLinkMass * ((bottomLinkDXCoM)^2+(bottomLinkDYCoM)^2)) + (1/2 * bottomLinkI * (boardDTheta + bottomLinkDTheta)^2);
 topLinkKE = (1/2* topLinkMass * ((topLinkDXCoM)^2+(topLinkDYCoM)^2)) + (1/2 * topLinkI * (boardDTheta + bottomLinkDTheta + topLinkDTheta)^2);
 

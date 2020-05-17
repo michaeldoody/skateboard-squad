@@ -18,14 +18,26 @@
 
 function [A_all,Hessian] = constraint_derivatives(x,params)
 
-% autogen inputs: boardTheta,boardHeight,boardLength,wheelRadius)
 
 
 
-[A_all,H_constL,H_constR] = autogen_constraint_derivatives(x(3),...
-                                                           params.boardHeight,...
-                                                           params.boardLength,...
-                                                           params.wheelRadius);
+[~,~,n_l] = track(x(11),params);
+[~,~,n_r] = track(x(12),params);
+
+normLeftX = n_l(1);
+normLeftY = n_l(2);
+normRightX = n_r(1);
+normRightY = n_r(2);
+
+% autogen inputs: boardTheta,boardHeight,boardLength,
+% normLeftX,normLeftY,normRightX,normRightY,wheelRadius
+
+[A_all,H_constL,H_constR] = autogen_constraint_derivatives(...
+                             x(3), params.boardHeight, params.boardLength,...
+                             normLeftX, normLeftY, normRightX, normRightY,...
+                             params.wheelRadius);
+                               
+                 
 Hessian = cat(3,H_constL,H_constR);
 
 end
