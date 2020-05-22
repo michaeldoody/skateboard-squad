@@ -277,10 +277,13 @@ end
 
 %% DECIDE WHAT Q IS  
 
+% inputs for feedback control: board Current Angle, bottomLink Current Angle,
+% bottomLink Desired Angle, topLink Current Angle, topLink Desired Angle
+
 [bottomMotorTorque, topMotorTorque] = pid_angle(x(3), x(4), 1.1, x(5), 0);
  
 
-Q = [0;0;0;bottomMotorTorque;topMotorTorque];
+Q = [0; 0; 0; bottomMotorTorque; topMotorTorque];
 
 
 
