@@ -16,12 +16,20 @@ clc;
 
 init_env();
 
+stage_input = input('Enter stage: \n', 's');
+
+while (~strcmp(stage_input, "ramp") && ~strcmp(stage_input, "flat"))
+    stage_input = input('Invalid stage, enter again: \n', 's');
+end
+
 
 %% Initialize parameters
 
 params = initial_params;
+params.sim.stage = stage_input;
 global i
-
+global prevBottomError
+global prevTopError
 %% Set up events using odeset
 
 options = odeset('Events',@robot_events);
@@ -31,14 +39,16 @@ options = odeset('Events',@robot_events);
 % last five are velocities corresponding
 
 events = [];
+prevBottomError = 0;
+prevTopError = 0;
 
 
-boardX_init = 0;
+boardX_init = -1;
 boardY_init = 0;
 boardTheta_init = 0;
-bottomLinkTheta_init = 0;
+bottomLinkTheta_init = 0.8;
 topLinkTheta_init = 0;
-boardDX_init = 5; 
+boardDX_init = 1; 
 boardDY_init = 0;
 boardDTheta_init = 0;
 bottomLinkDTheta_init = 0;
@@ -176,6 +186,12 @@ ylabel('Right constraint (N)');
 xlabel('time (sec)');
 hold off
 
+figure
+plot(tsim, xsim(:,4), 'LineWidth', 2);
+ylabel('Joint angle');
+xlabel('time (sec)');
+hold off
+
 
 
 
@@ -261,7 +277,7 @@ end
 
 %% DECIDE WHAT Q IS  
 
-[bottomMotorTorque, topMotorTorque] = pid_angle(x(4), 0, x(5), 0);
+[bottomMotorTorque, topMotorTorque] = pid_angle(x(3), x(4), 1.1, x(5), 0);
  
 
 Q = [0;0;0;bottomMotorTorque;topMotorTorque];
@@ -315,7 +331,7 @@ else  % if there are constraints active, we must compute the constraint forces
     % compute the constraint forces and accelerations
     F_active = (A*Minv*A')\(A*Minv*(Q - H) + Adotqdot);   % these are the constraint forces
     dx(1:nq) = (eye(nq) - A'*((A*A')\A))*x(nq+1:2*nq);
-    dx(nq+1:2*nq) = Minv*(Q - H - A'*F_active);
+    dx(nq+1:2*nq) = Minv*(Q - H - A'*F_active) - (A'*((A*A')\A)*x(nq+1:2*nq)).*1000;
 
     % 4x1 vector of constraint forces
     F(params.sim.constraints) = F_active;   
@@ -401,6 +417,8 @@ A = [];
 restitution = [];
 collision = 0;
 
+
+
 for i1 = 1:length(ie)  % I'm not sure if ie is ever a vector ... just being sure!
     if params.sim.constraints(ie(i1)) == 1  % if the event came from an active constraint
         params.sim.constraints(ie(i1)) = 0; % then make the constraint inactive
@@ -408,9 +426,18 @@ for i1 = 1:length(ie)  % I'm not sure if ie is ever a vector ... just being sure
         collision = 1;
         params.sim.constraints(ie(i1)) = 1; % make the constraint active
         % find the constraint jacobian
-        [A_all,~] = constraint_derivatives(x_IC,params);
-        A = [A;A_all(ie(i1),:)];
-        restitution = [restitution,1+params.sim.restitution(ie(i1))];
+        
+            switch stage
+    
+             case 'ramp'
+             [A_all,~] = constraint_derivatives_ramp(x_IC,params);
+             
+             case 'flat'  
+             [A_all,~] = constraint_derivatives_flat(x_IC,params);
+            end
+            
+       A = [A;A_all(ie(i1),:)];
+       restitution = [restitution,1+params.sim.restitution(ie(i1))];
     end
 end
 
@@ -428,6 +455,8 @@ if collision == 1
         if F(i1)<10^-6, params.sim.constraints(i1) = 0; end  % turn off unilateral constraints with negative forces
     end
 end
+
+
 
 end
 %% end of change_constraints.m %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

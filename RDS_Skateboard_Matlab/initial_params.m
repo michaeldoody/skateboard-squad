@@ -47,7 +47,7 @@ function params = initial_params
     
     params.sim.dt = 0.015;
     dt = params.sim.dt;
-    params.sim.tfinal = 1.5;
+    params.sim.tfinal = .5;
     tfinal = params.sim.tfinal;
     
     params.g = 10;
