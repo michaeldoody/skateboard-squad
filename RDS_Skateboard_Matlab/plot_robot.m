@@ -44,25 +44,19 @@ parse(p, q, params, varargin{:});
 % Verification: display the results of parsing:
 % disp(p.Results)
 
-stage = params.sim.stage;
-
-switch stage
-    
-    case 'ramp'
-
-    svec = linspace(-params.trackRadius*pi/2,params.trackRadius*pi/2,100);
-    track_shape = zeros(2,length(svec));
-    for i1=1:length(svec)
-     [track_shape(:,i1),~,~] = track(svec(i1),params);
-    end
+svec = linspace(-params.trackRadius*pi/2,params.trackRadius*pi/2,100);
+track_shape = zeros(2,length(svec));
+for i1=1:length(svec)
+    [track_shape(:,i1),~,~] = track(svec(i1),params);
+end
 
 %% for convenience, define each generalized coordinate
 
 
-[pLeftWheel,~,~] = track(q(6),params);
-[pRightWheel,~,~] = track(q(7),params);
+[pLeftWheel,~,~] = track(q(6),params)
+[pRightWheel,~,~] = track(q(7),params)
 
-end
+
 %% Compute the 4 corners of the cart, clockwise from top left corner
 % First compute the cart's home position (q(1) = 0):
 
@@ -218,18 +212,18 @@ i = 1;
 
 end
 
+
+
+
+
 %% Display the cart, pendulum, and the pendulum's CoM
 if p.Results.new_fig
     figure;
 end
 
-
-switch stage
-    
-case 'ramp'
-
 plot(track_shape(1,:),track_shape(2,:),'-k');
 hold on;
+
 fill(board.curr.corners(1,:),board.curr.corners(2,:),params.viz.colors.board);
 hold on;
 fill(bottomLink.curr.corners(1,:),bottomLink.curr.corners(2,:),params.viz.colors.bottomLink);
@@ -265,38 +259,8 @@ legend([p1 p2 p3 p4], 'board CoM', 'bottom Link CoM', 'top link CoM',...
         'FontSize',10);
 hold off
 
-case 'flat'
-    
-fill(board.curr.corners(1,:),board.curr.corners(2,:),params.viz.colors.board);
-hold on;
-fill(bottomLink.curr.corners(1,:),bottomLink.curr.corners(2,:),params.viz.colors.bottomLink);
-hold on 
-fill(topLink.curr.corners(1,:),topLink.curr.corners(2,:),params.viz.colors.topLink);
-hold on
-circle(board.curr.corners(1,3), board.curr.corners(2,3), params.wheelRadius, [0.25, 0.25, 0.25]);
-hold on
-circle(board.curr.corners(1,4), board.curr.corners(2,4), params.wheelRadius, [0.25, 0.25, 0.25]);
+ 
 
-p1 = plot(board.curr.com.x, board.curr.com.y,'o','MarkerSize',10,...
-    'MarkerFaceColor',params.viz.colors.boardCoM);
-hold on
-p2 = plot(bottomLink.curr.com.x, bottomLink.curr.com.y,'o','MarkerSize',10,...
-    'MarkerFaceColor',params.viz.colors.bottomLinkCoM);
-hold on
-p3 = plot(topLink.curr.com.x, topLink.curr.com.y, 'o', 'MarkerSize', 10,...
-    'MarkerFaceColor',params.viz.colors.topLinkCoM);
-hold on;
-p4 = plot(robot.curr.com.x, robot.curr.com.y, 'o', 'MarkerSize', 10,...
-    'MarkerFaceColor','cyan');
-hold on
-legend([p1 p2 p3 p4], 'board CoM', 'bottom Link CoM', 'top link CoM',...
-        'aggregate CoM','Location', 'southeast', ...
-        'FontSize',10);
-yline(0);
-hold off
-
-
-end
 
 axis(params.viz.axis_lims .* 2);
 daspect([1 1 1]) % no distortion

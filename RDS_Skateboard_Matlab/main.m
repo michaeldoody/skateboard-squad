@@ -38,40 +38,29 @@ boardY_init = 0;
 boardTheta_init = 0;
 bottomLinkTheta_init = 0;
 topLinkTheta_init = 0;
-boardDX_init = 5; 
-boardDY_init = 0;
+boardDX_init = 0; 
+boardDY_init = 3;
 boardDTheta_init = 0;
 bottomLinkDTheta_init = 0;
 topLinkDTheta_init = 0;
 
-stage = params.sim.stage;
+
 
 thetaRamp = asin((params.boardLength/2)/params.trackRadius);
 trackLeftS_init = -params.trackRadius*thetaRamp;
 trackRightS_init = params.trackRadius*thetaRamp;
 
-    
-  
-
 x_IC = [boardX_init; boardY_init; boardTheta_init;...
         bottomLinkTheta_init; topLinkTheta_init; ...
         boardDX_init; boardDY_init; boardDTheta_init;...
-        bottomLinkDTheta_init; topLinkDTheta_init];
-       
-x_IC_plot = x_IC(1:5);
-
-      
-switch stage
+        bottomLinkDTheta_init; topLinkDTheta_init;...
+        trackLeftS_init; trackRightS_init];
     
-    case 'ramp'
-    x_IC = [x_IC; trackLeftS_init; trackRightS_init];
-    x_IC_plot = [x_IC_plot; x_IC(11); x_IC(12)];
-    
-end
-
 i = 0;
+
+x_IC_plot = x_IC([1:5,11,12]);
  
-plot_robot(x_IC_plot, params,'new_fig',false);
+plot_robot(x_IC_plot,params,'new_fig',false);
 
 
 
@@ -198,15 +187,7 @@ x_anim = x_anim'; % transpose so that xsim is 10xN (N = number of timesteps)
 F_anim = interp1(tsim,F_list',t_anim);
 F_anim = F_anim';
 
-switch stage
-    
-    case 'ramp'
-        xAnim = x_anim([1:5,11,12],:);
-    case 'flat'
-        xAnim = x_anim(1:5,:);
-end
-
-animate_robot(xAnim, F_anim, params,'trace_board_com',true,...
+animate_robot(x_anim([1:5,11,12],:), F_anim, params,'trace_board_com',true,...
     'trace_bottomLink_com',true,'trace_topLink_com',true,'trace_robot_com',...
      true,'show_constraint_forces',true,'video',true);
 fprintf('Done!\n');
@@ -237,51 +218,41 @@ fprintf('Done!\n');
 function [dx, F] = robot_dynamics(t,x)
 
 % for convenience, define q_dot
-
-switch stage
-    
-    case 'ramp'
-        
-    dx = zeros(numel(x),1);
-    nq = numel(x)/2-1;    % assume that x = [q;q_dot; s(1); s(2)];
-    q_dot = x(nq+1:2*nq);
-    s = x(2*nq+1:2*nq+2);
-
-    case 'flat'
-        
-    dx = zeros(numel(x),1);
-    nq = numel(x)/2;    % assume that x = [q;q_dot; s(1); s(2)];
-    q_dot = x(nq+1:2*nq);   
-
-end
+dx = zeros(numel(x),1);
+nq = numel(x)/2-1;    % assume that x = [q;q_dot; s(1); s(2)];
+q_dot = x(nq+1:2*nq);
+s = x(2*nq+1:2*nq+2);
 
 
 % solve for control inputs at this instant
 
 
-%% DECIDE WHAT Q IS  
-
-[bottomMotorTorque, topMotorTorque] = pid_angle(x(4), 0, x(5), 0);
+%% DECIDE WHAT Q IS
+% 
+% 
+% if t > 0.1 && t < 0.15
+%     bottomMotorTorque = 0.5*params.bottomMotor.maxTorque;
+%     topMotorTorque = 0.5*params.bottomMotor.maxTorque;
+% elseif t > 0.15 && t < 0.3
+%     bottomMotorTorque = -0.5*params.bottomMotor.maxTorque;
+%     topMotorTorque = -0.5*params.bottomMotor.maxTorque;
+% else 
+%     bottomMotorTorque = 0;
+%     topMotorTorque = 0;
+%     
+% end
  
+bottomMotorTorque = 0;
+topMotorTorque = 0;
 
 Q = [0;0;0;bottomMotorTorque;topMotorTorque];
-
-
 
 %%
 
 % find the parts that don't depend on constraint forces
 H = H_eom(x,params);
 Minv = inv_mass_matrix(x,params);
-
-switch stage
-    
-    case 'ramp'
-        [A,Hessian] = constraint_derivatives_ramp(x,params);
-        
-    case 'flat'
-        [A, Hessian] = constraint_derivatives_flat(x,params);
-end
+[A,Hessian] = constraint_derivatives(x,params);
 
 % compute energy
 
@@ -322,38 +293,21 @@ else  % if there are constraints active, we must compute the constraint forces
 
 end
 
-switch stage
-    
-    case 'ramp'
+[leftWheelPos,rightWheelPos] = wheel_coordinates(x,params);
+[leftWheelVelo,rightWheelVelo] = wheel_velocities(x,params);
+[p_l,t_l,~] = track(s(1),params);
+[p_r,t_r,~] = track(s(2),params);
 
-    [leftWheelPos,rightWheelPos] = wheel_coordinates(x,params);
-    [leftWheelVelo,rightWheelVelo] = wheel_velocities(x,params);
-    [p_l,t_l,~] = track(s(1),params);
-    [p_r,t_r,~] = track(s(2),params);
+dx(2*nq+1) = (leftWheelVelo + params.sim.gain*(leftWheelPos - p_l))'*t_l;
+dx(2*nq+2) = (rightWheelVelo + params.sim.gain*(rightWheelPos - p_r))'*t_r;
 
-    dx(2*nq+1) = (leftWheelVelo + params.sim.gain*(leftWheelPos - p_l))'*t_l;
-    dx(2*nq+2) = (rightWheelVelo + params.sim.gain*(rightWheelPos - p_r))'*t_r;
-    
-end
 
-switch stage
-    
-    case 'ramp'
-
-C = constraints_ramp(x,params);
+C = constraints(x,params);
 events = F;
 events(~params.sim.constraints) = -C(~params.sim.constraints);
 
-    case 'flat'
-        
-C = constraints_flat(x,params);
-events = F;
-events(~params.sim.constraints) = -C(~params.sim.constraints);
- 
-
 end
 
-end
 
 %% end of robot_dynamics.m
 
