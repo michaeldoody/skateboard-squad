@@ -45,7 +45,7 @@ function params = initial_params
     params.topLinkXCoM = 0;
     params.topLinkYCoM = 0.2;
     
-    params.sim.dt = 0.015;
+    params.sim.dt = 0.025;
     dt = params.sim.dt;
     params.sim.tfinal = .5;
     tfinal = params.sim.tfinal;
@@ -64,9 +64,10 @@ function params = initial_params
     params.bottomMotor.torque = zeros(1, length(params.bottomMotor.time));
     params.topMotor.torque = zeros(1, length(params.topMotor.time));
      
-    params.sim.constraints = logical([0, 0]); % left and right
+    params.sim.constraints = logical([1, 1]); % left and right
     params.sim.restitution = [0.0, 0.0];
-    params.sim.trick = 'ramp';
+    params.sim.stage = 'ramp';
+    params.sim.trick = 'pumping';
     params.sim.gain = 500;
     
     params.trackRadius = 2;

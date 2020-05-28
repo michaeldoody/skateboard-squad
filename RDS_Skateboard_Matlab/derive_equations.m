@@ -55,11 +55,8 @@ syms  frictForceX frictForceY bottomMotorTorque topMotorTorque  real % force on 
 % Note: we are not defining a torque at the cart-pendulum joint, so the
 % system is underactuated. This will make things interesting!
 
-Q = [frictForceX; frictForceY; 0; bottomMotorTorque; topMotorTorque];
-% SET FRICTX, FRICTY == 0 TO START
+Q = [0; 0; 0; bottomMotorTorque; topMotorTorque];
 
-frictForceX = 0;
-frictForceY= 0;
 
 fprintf('\t...done.\n');
 
@@ -153,7 +150,7 @@ fprintf("Initializing constraint variables...\n");
 
 syms boardLeftX boardLeftY boardRightX boardRightY real
 syms pLeftX pLeftY pRightX pRightY normLeftX normLeftY normRightX normRightY real
-syms constL constR real
+syms constL_ramp constR_ramp constL_flat constR_flat real
 
 boardLeftX =  boardX + boardHeight/2 * sin(boardTheta) - boardLength/2 * cos(boardTheta) + wheelRadius * sin(boardTheta);
 
@@ -167,13 +164,21 @@ boardRightY = boardY - boardHeight/2 * cos(boardTheta) + boardLength/2 * sin(boa
 FK_leftWheel = [boardLeftX;boardLeftY];
 FK_rightWheel = [boardRightX;boardRightY];
 
-constL = (boardLeftX - pLeftX)*normLeftX + (boardLeftY - pLeftY)*normLeftY;
-constR = (boardRightX - pRightX)*normRightX + (boardRightY - pRightY)*normRightY;
+constL_flat = -boardLeftY;
+constR_flat = -boardRightY;
 
-constraints = [constL; constR];
+constL_ramp = (boardLeftX - pLeftX)*normLeftX + (boardLeftY - pLeftY)*normLeftY;
+constR_ramp = (boardRightX - pRightX)*normRightX + (boardRightY - pRightY)*normRightY;
+
+constraints_flat = [constL_flat; constR_flat];
+constraints_ramp = [constL_ramp; constR_ramp];
+
+
 
 matlabFunction(FK_leftWheel,FK_rightWheel,'File','autogen_fk_wheels');
-matlabFunction(constraints,'File','autogen_constraints');
+matlabFunction(constraints_flat,'File','autogen_constraints_flat');
+matlabFunction(constraints_ramp,'File','autogen_constraints_ramp');
+
 
 %% Derivatives
 fprintf('\tGenerating time derivatives of the kinematics equations...\n');
@@ -206,16 +211,23 @@ leftWheelDFK = jacobian(FK_leftWheel,q)*dq;
 rightWheelDFK = jacobian(FK_rightWheel,q)*dq;
 
 
-syms A_all H_constL H_constR real
+syms A_all_ramp H_constL_ramp H_constR_ramp real
+syms A_all_flat H_constL_flat H_constR_flat real
 
-A_all = jacobian(constraints, q);
+A_all_ramp = jacobian(constraints_ramp, q);
+A_all_flat = jacobian(constraints_flat, q);
 
-H_constL = hessian(constL, q);
-H_constR = hessian(constR, q);
+H_constL_ramp = hessian(constL_ramp, q);
+H_constR_ramp = hessian(constR_ramp, q);
+
+H_constL_flat = hessian(constL_flat, q);
+H_constR_flat = hessian(constR_flat, q);
+
 
 matlabFunction(leftWheelDFK,rightWheelDFK,'File','autogen_wheel_velocities');
 matlabFunction(bottomLinkDXCoM, bottomLinkDYCoM, topLinkDXCoM, topLinkDYCoM, 'File', 'autogen_CoM_velocities');
-matlabFunction(A_all, H_constL, H_constR, 'File', 'autogen_constraint_derivatives');
+matlabFunction(A_all_ramp, H_constL_ramp, H_constR_ramp, 'File', 'autogen_constraint_derivatives_ramp');
+matlabFunction(A_all_flat, H_constL_flat, H_constR_flat, 'File', 'autogen_constraint_derivatives_flat');
 
 fprintf('\t...done with constraint equations.\n');
 
@@ -311,156 +323,5 @@ fprintf('\t\t...done.\n');
 
 fprintf('...done deriving cart-pendulum equations.\n');
 
-% %% Generate (nonlinear) state-space model from manipulator equation
-% fprintf('\tConverting manipulator equation to state-space form...\n');
-% 
-% f_ss = sym('f_ss',[2*numel(q),1],'real'); % drift vector field
-% g_ss = sym('g_ss',[2*numel(q),2],'real'); % control vector field
-% 
-% % Note: building the state-space dynamics from the manipulator equation has
-% % two steps:
-% %
-% %   1) the manipulator equation gives the *inverse* dynamics (mapping from
-% %   state and accelerations to forces/torques). We need
-% %   the *forward* dynamics (mapping from state and forces/torques to
-% %   accelerations), so we must solve the manipulator equation for ddq:
-% %
-% %       ddq = -Minv*(C*dq + G) + Minv * (S * u), S as [5x2]
-% %
-% %   We could write a generalization of this equation as follows:
-% %
-% %       ddq = temp_drift + temp_ctrl * u
-% %
-% %   where
-% %       temp_drift = -Minv*(C*dq + G) and
-% %       temp_ctrl  = Minv * S 
-% %   The motivation for these variable names (temp_drift & temp_ctrl) is
-% %   explained below.
-% %
-% %   2) Solving the manipular equation for ddq gives us the forward
-% %   dynamics, represented as a system of 2nd-order ODEs. The state-space
-% %   dynamics are represented as a system of 1st-order ODEs, so we must
-% %   convert the 2nd-order system to a 1st-order system:
-% %
-% %       x   = [q;  dq]; % state vector
-% %       dx  = [dq; ddq]; % derivative of the state vector w.r.t. time
-% %
-% %       % Substitute the forward dynamics for ddq in the equation for dx,
-% %       resulting in a system of 4 1st-order ODEs:
-% %
-% %       dx = [dq; temp_drift + temp_ctrl*u];
-% %
-% %   There is more structure to this system of ODEs than may be
-% %   apparent at first glance. In particular, the control input u appears
-% %   linearly in the state-space dynamics, so we can (abstractly) write
-% %   the state-space dynamics as
-% %
-% %       dx = f_ss(x) + g_ss(x)*u,
-% %
-% %   where
-% %       f_ss(x) = [0; 0; temp_drift(1); temp_drift(2)] and
-% %       g_ss(x) = [0; 0; temp_ctrl(1);  temp_ctrl(2)].
-% %
-% %   This is called a "control-affine" system because the dynamics are
-% %   "affine" (linear) in the control input u; g_ss(x) (the coefficient of
-% %   u) is called the "control vector field", and f_ss(x) (everything else
-% %   that is not a coefficient of u) is called the "drift vector field"
-% %   (because it describes how the state "drifts" in the absence of control
-% %   input).
-% %
-% %   Note: the "_ss" suffix stands for "state-space" (not "steady-state").
-% 
-% 
-% % Selection Matrix: two controls (one for each motor)
-% 
-% 
-% S = [0 0;...
-%      0 0;...
-%      0 0;...
-%      1 0;...
-%      0 1];
-% 
-% 
-% temp_drift = simplify(-Minv * (C*dq + G)); % stuff that does not care about u
-% temp_ctrl = simplify(Minv * S); % stuff that does care about u
-% 
-% % Build state-space representation:
-% for i = 1:numel(q)
-%     f_ss(i)   = dq(i);
-%     g_ss(i,:)   = 0;
-%     f_ss(i+numel(q)) = temp_drift(i);
-%     g_ss(i+numel(q),:) = temp_ctrl(i,:);
-% end
-% 
-% matlabFunction(f_ss,'File','autogen_drift_vector_field');
-% matlabFunction(g_ss,'File','autogen_control_vector_field');
-% 
-% fprintf('\t...done converting manipulator equation to state-space form.\n');
-% 
-% %% Linearize the state-space model around the upright equilibrium
-% fprintf('\tLinearizing the dynamics about the upright equilibrium...\n')
-% 
-% % Note: we linearize the state-space dynamics by performing a 1st-order
-% % Taylor series approximation, evaluated at the upright equilibrium:
-% boardXEq = 0;
-% boardDXEq = 0;
-% 
-% boardYEq = 0;
-% boardDYEq = 0;
-% 
-% boardThetaEq = 0;
-% boardDThetaEq = 0;
-% 
-% bottomLinkThetaEq = 0;
-% bottomLinkDThetaEq = 0;
-% 
-% topLinkThetaEq = 0;
-% topLinkDThetaEq = 0;
-% 
-% 
-% % Note: we have been talking about x for a while above but haven't needed
-% % to define it as a symbolic variable until now:
-% x = [q; dq]; % just makes the code below easier to read)
-% 
-% % define the equilibrium state:
-% x_eq = [boardXEq; boardDXEq; boardYEq; boardDYEq; boardThetaEq; boardDThetaEq;...
-%         bottomLinkThetaEq; bottomLinkDThetaEq; topLinkThetaEq; topLinkDThetaEq];
-% 
-% % Step 1 of Taylor series approximation is to compute Jacobians:
-% f_ss_jac = jacobian(f_ss, x);
-% g_ss_jac = g_ss;
-% % Note: g_ss_jac = g_ss because the nonlinear state-space dynamics are
-% % control-affine, but you should verify this!
-% 
-% % Evaluate Jacobians at the upright equilibrium:
-% A = simplify(subs(f_ss_jac, x, x_eq));
-% B = simplify(subs(g_ss_jac, x, x_eq));
-% 
-% fprintf('\t...done linearizing the dynamics about the upright equilibrium.\n')
-% 
-% matlabFunction(A,'File','autogen_upright_state_matrix');
-% matlabFunction(B,'File','autogen_upright_input_matrix');
-% 
-% %% Compute the controllability matrix and its rank
-% fprintf('\tComputing the controllability matrix of the linearized model...\n')
-% 
-% % Note: the linearized dynamics "near" the upright equilibrium are 
-% % controllable if rank(Co) = dim(x) (4 in our cart-pendulum example). This
-% % is called the Kalman controllability rank condition and is an
-% % easy-to-compute metric of controllability for a linear system, i.e., a 
-% % useful sanity check.
-% 
-% % Note: our cart-pendulum is underactuated (1 control input, 2 degees of
-% % freedom). Does that mean it is not controllable?
-% 
-% % Co = [];
-% % for i = 1:((2*numel(q)))
-% %     Co = horzcat(Co,simplify((A^(i-1))*B));
-% % end
-% % 
-% % fprintf('\t...done. The controllability matrix of the linearized model has rank %d.\n',...
-% %     rank(Co));
-% 
-% %% Done!
-% fprintf('...done deriving cart-pendulum equations.\n');
+
 end

@@ -30,6 +30,8 @@ params.sim.stage = stage_input;
 global i
 global prevBottomError
 global prevTopError
+global prevBottomErrorPumping
+global prevTopErrorPumping
 %% Set up events using odeset
 
 options = odeset('Events',@robot_events);
@@ -41,14 +43,18 @@ options = odeset('Events',@robot_events);
 events = [];
 prevBottomError = 0;
 prevTopError = 0;
+prevBottomErrorPumping = 0;
+prevTopErrorPumping = 0;
+
+trick = params.sim.trick;
 
 
-boardX_init = -1;
+boardX_init = 0;
 boardY_init = 0;
 boardTheta_init = 0;
-bottomLinkTheta_init = 0.8;
+bottomLinkTheta_init = 0;
 topLinkTheta_init = 0;
-boardDX_init = 1; 
+boardDX_init = 0; 
 boardDY_init = 0;
 boardDTheta_init = 0;
 bottomLinkDTheta_init = 0;
@@ -187,8 +193,13 @@ xlabel('time (sec)');
 hold off
 
 figure
+subplot(1,2,1)
+plot(tsim, xsim(:,5), 'LineWidth', 2);
+ylabel('Top joint angle');
+xlabel('time (sec)');
+subplot(1,2,2)
 plot(tsim, xsim(:,4), 'LineWidth', 2);
-ylabel('Joint angle');
+ylabel('Bottom joint angle');
 xlabel('time (sec)');
 hold off
 
@@ -280,11 +291,19 @@ end
 % inputs for feedback control: board Current Angle, bottomLink Current Angle,
 % bottomLink Desired Angle, topLink Current Angle, topLink Desired Angle
 
-[bottomMotorTorque, topMotorTorque] = pid_angle(x(3), x(4), 1.1, x(5), 0);
- 
+switch trick
+    
+    case 'pumping'
+   
+[bottomMotorTorque, topMotorTorque] = pid_pumping(x(4), x(5));
+
+    case 'manual'
+
+[bottomMotorTorque, topMotorTorque] = pid_manual(x(4), x(5));
+
+end
 
 Q = [0; 0; 0; bottomMotorTorque; topMotorTorque];
-
 
 
 %%
@@ -467,9 +486,3 @@ end
 
 %% End of main.m
 end
-
-
-
-
-
-
