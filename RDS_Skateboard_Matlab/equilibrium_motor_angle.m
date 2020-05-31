@@ -21,12 +21,11 @@ topLinkTheta = x(3);
 
 boardHeight = params.boardHeight/2;
 bottomLinkHeight =  params.bottomLinkHeight;
-m_b = params.model.dyn.body.m;
 boardMass = params.boardMass;
 bottomLinkMass = params.bottomLinkMass;
 topLinkMass = params.topLinkMass;
 wheelRadius = params.wheelRadius;
 boardLength = params.boardLength/2;
 
-theta_m_eq = autogen_equilibrium_motor_angle(boardHeight,bottomLinkHeight,boarMass,bottomLinkMass,topLinkMass,wheelRadius,boardTheta,bottomLinkTheta,topLinkTheta,boardLength);
+theta_m_eq = autogen_equilibrium_motor_angle(boardHeight,bottomLinkHeight,boardMass,bottomLinkMass,topLinkMass,wheelRadius,boardTheta,bottomLinkTheta,topLinkTheta,boardLength);
 end

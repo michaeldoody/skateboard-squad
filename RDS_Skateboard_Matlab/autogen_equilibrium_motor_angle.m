@@ -1,4 +1,4 @@
-function theta_m_eq = autogen_equilibrium_motor_angle(boardHeight,bottomLinkHeight,boarMass,bottomLinkMass,topLinkMass,wheelRadius,boardTheta,bottomLinkTheta,topLinkTheta,boardLength)
+function theta_m_eq = autogen_equilibrium_motor_angle(boardHeight,bottomLinkHeight,boardMass,bottomLinkMass,topLinkMass,wheelRadius,boardTheta,bottomLinkTheta,topLinkTheta,boardLength)
 %AUTOGEN_EQUILIBRIUM_MOTOR_ANGLE
 %    THETA_M_EQ = AUTOGEN_EQUILIBRIUM_MOTOR_ANGLE(BOARDMASS,BOARDTHETA,BOARDHEIGHT,BOARDLENGTH,BOTTOMLINKMASS,BOTTOMLINKTHETA,R,TOPLINKMASS)
 
