@@ -30,58 +30,112 @@ params.sim.stage = stage_input;
 global i
 global prevBottomError
 global prevTopError
+
+%% Set max time step using odeset
+options = odeset('MaxStep',params.sim.dt);
+
 %% Set up events using odeset
-
 options = odeset('Events',@robot_events);
-%% Visualize the robot in its initial state
 
-% first five elements are configs (boardX boardY boardTheta bottomLinkTheta topLinkTheta
-% last five are velocities corresponding
+%% Set the initial equilibrium pose of the robot
+x_eq = zeros(6,1);
+% Set foot angle to 30 degrees and spine to -5 degrees
+x_eq(1) = pi/12;
+x_eq(2) = -pi/36;
+x_eq(3) = equilibrium_motor_angle(x_eq,params);
 
-events = [];
-prevBottomError = 0;
-prevTopError = 0;
+% Code for testing equilibrium 
+%dist_up_spine = params.model.geom.body.r*x_eq(3)
+%[FK_com_f,FK_com_s,FK_com_b] = fk_com(x_eq,params);
+%should_be_zero = params.model.dyn.foot.m*FK_com_f(1) + ...
+%    params.model.dyn.spine.m*FK_com_s(1) + ...
+%    params.model.dyn.body.m*FK_com_b(1)
+%x_wheel = wheel_position(x_eq,params)  % should be zero
 
 
-boardX_init = -1;
-boardY_init = 0;
-boardTheta_init = 0;
-bottomLinkTheta_init = 0.8;
-topLinkTheta_init = 0;
-boardDX_init = 1; 
-boardDY_init = 0;
-boardDTheta_init = 0;
-bottomLinkDTheta_init = 0;
-topLinkDTheta_init = 0;
+%% Show the robot in equilibrium
+plot_robot(x_eq(1:3),params,'new_fig',true);
 
-stage = params.sim.stage;
+%% Set the initial equilibrium motor torques
+G = conservative_forces(x_eq,params);
+u_eq = [G(2);G(3)];              % initial command
+u = u_eq;
 
-thetaRamp = asin((params.boardLength/2)/params.trackRadius);
-trackLeftS_init = -params.trackRadius*thetaRamp;
-trackRightS_init = params.trackRadius*thetaRamp;
+%% Design the LQR Controller
+% first, find the linearized equations: (more info in
+% derive_equations_JR.mlx)
+%   x_dot = [ 0,  I; 0, -M(q_eq)\G_jac(q_eq)]*x + ...
+%       M(q_eq)\[0,0;eye(2)]*u_lin
+M_eq = mass_matrix(x_eq,params);    % mass matrix at equilibrium
+G_jac_eq = derivative_conservative_forces(x_eq,params); % gravitational and spring forces at equilibrium
+% create A and B matrices of linear system
+A = [zeros(3,3),eye(3);-M_eq\G_jac_eq,zeros(3,3)];
+Open_Loop_Poles = eig(A)  % display the unstable open loop poles
+B = [zeros(3,2);M_eq\[0,0;eye(2)]];
 
-    
-  
+% then, set up Q and R matrices using Bryson's Rule
+% I had to play with the weights quite a bit to get something reasonable.
+% I ended up putting very low penalty on the angles, none on the angular
+% velocities, and max penalty on the actuation (R_lqr).  This effectively
+% turns down the gain, which is important for digital control.  Too much
+% gain, and things get unstable
+Q_lqr = 1e-7*diag([1,1,1,0,0,0]);
+R_lqr = eye(2);
+% then solve for optimal gains
+[Gains,~,Poles] = lqr(A,B,Q_lqr,R_lqr);
+Poles  % uncomment this line if you want to see the closed loop poles
 
-x_IC = [boardX_init; boardY_init; boardTheta_init;...
-        bottomLinkTheta_init; topLinkTheta_init; ...
-        boardDX_init; boardDY_init; boardDTheta_init;...
-        bottomLinkDTheta_init; topLinkDTheta_init];
-       
-x_IC_plot = x_IC(1:5);
 
-      
-switch stage
-    
-    case 'ramp'
-    x_IC = [x_IC; trackLeftS_init; trackRightS_init];
-    x_IC_plot = [x_IC_plot; x_IC(11); x_IC(12)];
-    
-end
 
-i = 0;
- 
-plot_robot(x_IC_plot, params,'new_fig',false);
+
+% %% Visualize the robot in its initial state
+% 
+% % first five elements are configs (boardX boardY boardTheta bottomLinkTheta topLinkTheta
+% % last five are velocities corresponding
+% 
+% events = [];
+% prevBottomError = 0;
+% prevTopError = 0;
+% 
+% boardX_init = -1;
+% boardY_init = 0;
+% boardTheta_init = 0;
+% bottomLinkTheta_init = 0.8;
+% topLinkTheta_init = 0;
+% boardDX_init = 1; 
+% boardDY_init = 0;
+% boardDTheta_init = 0;
+% bottomLinkDTheta_init = 0;
+% topLinkDTheta_init = 0;
+% 
+% stage = params.sim.stage;
+% 
+% thetaRamp = asin((params.boardLength/2)/params.trackRadius);
+% trackLeftS_init = -params.trackRadius*thetaRamp;
+% trackRightS_init = params.trackRadius*thetaRamp;
+% 
+%     
+%   
+% 
+% x_IC = [boardX_init; boardY_init; boardTheta_init;...
+%         bottomLinkTheta_init; topLinkTheta_init; ...
+%         boardDX_init; boardDY_init; boardDTheta_init;...
+%         bottomLinkDTheta_init; topLinkDTheta_init];
+%        
+% x_IC_plot = x_IC(1:5);
+% 
+%       
+% switch stage
+%     
+%     case 'ramp'
+%     x_IC = [x_IC; trackLeftS_init; trackRightS_init];
+%     x_IC_plot = [x_IC_plot; x_IC(11); x_IC(12)];
+%     
+% end
+% 
+% i = 0;
+%  
+% plot_robot(x_IC_plot, params,'new_fig',false);
 
 
 
