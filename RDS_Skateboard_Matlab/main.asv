@@ -109,7 +109,7 @@ x_IC(3) = x_IC(3) + 2*pi;
 %% initialize controller memory
 memory.u_eq = u_eq;  % not really memory ... just passing the equilibrium 
 memory.x_eq = x_eq;  % not really memory ... just passing the equilibrium
-memory.y = x_IC(2:4);  % y = stuff you can control
+memory.y = x_IC(2:4);
 memory.boardTheta = x_IC(1);  % perfect initial knowledge!
 
 %% Simulate the robot forward in time (main loop)
@@ -316,7 +316,7 @@ function [u,memory] = digital_controller(y,Gains,memory)
     boardTheta = memory.boardTheta + y(3)*params.control.dt;
     
     % package up the state estimate
-    x = [boardTheta;y(1);y(2);y(3);bottomLinkThetaDot;topLinkThetaDot];
+    x = [est1_theta_f;y(1);y(2);y(3);est_theta_s_dot;est_theta_m_dot];
     
     % compute the controls
     error = x - memory.x_eq;
@@ -337,7 +337,7 @@ function [u,memory] = digital_controller(y,Gains,memory)
     
     % Update memory (these are values that the Tiva would store)
     memory.y = y;
-    memory.boardTheta = boardTheta;
+    memory.est1_theta_f = est1_theta_f;
     
 end
 %% end of digital_controller.m %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
