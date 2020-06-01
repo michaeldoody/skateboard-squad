@@ -15,17 +15,22 @@
 
 function [theta_m_eq] = equilibrium_motor_angle(x,params)
 
-boardTheta = x(1);
-bottomLinkTheta = x(2);
-topLinkTheta = x(3);
-
-boardHeight = params.boardHeight/2;
-bottomLinkHeight =  params.bottomLinkHeight;
 boardMass = params.boardMass;
-bottomLinkMass = params.bottomLinkMass;
-topLinkMass = params.topLinkMass;
-wheelRadius = params.wheelRadius;
+boardTheta = x(1);
+boardHeight = params.boardHeight/2;  % divide by 2 because jumping robot example measures height to center of mass
 boardLength = params.boardLength/2;
+bottomLinkMass = params.bottomLinkMass;
+bottomLinkTheta = x(2);
+r = params.wheelRadius;
+topLinkMass = params.topLinkMass;
 
-theta_m_eq = autogen_equilibrium_motor_angle(boardHeight,bottomLinkHeight,boardMass,bottomLinkMass,topLinkMass,wheelRadius,boardTheta,bottomLinkTheta,topLinkTheta,boardLength);
+% topLinkTheta = x(3);
+% bottomLinkMass = params.bottomLinkMass;
+% topLinkMass = params.topLinkMass;
+% wheelRadius = params.wheelRadius;
+% bottomLinkHeight =  params.bottomLinkHeight;
+
+theta_m_eq = autogen_equilibrium_motor_angle(boardMass,boardTheta,boardHeight,boardLength,bottomLinkMass,bottomLinkTheta,r,topLinkMass);
+
+% theta_m_eq = autogen_equilibrium_motor_angle(boardHeight,bottomLinkHeight,boardMass,bottomLinkMass,topLinkMass,wheelRadius,boardTheta,bottomLinkTheta,topLinkTheta,boardLength);
 end

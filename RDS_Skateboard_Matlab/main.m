@@ -38,11 +38,11 @@ options = odeset('MaxStep',params.sim.dt);
 options = odeset('Events',@robot_events);
 
 %% Set the initial equilibrium pose of the robot
-x_eq = zeros(6,1);
+x_eq = zeros(10,1);
 % Set foot angle to 30 degrees and spine to -5 degrees
-x_eq(1) = pi/12;
-x_eq(2) = -pi/36;
-x_eq(3) = equilibrium_motor_angle(x_eq,params);
+x_eq(3) = pi/12;
+x_eq(4) = -pi/36;
+x_eq(5) = equilibrium_motor_angle(x_eq,params);
 
 % Code for testing equilibrium 
 %dist_up_spine = params.model.geom.body.r*x_eq(3)
@@ -54,7 +54,22 @@ x_eq(3) = equilibrium_motor_angle(x_eq,params);
 
 
 %% Show the robot in equilibrium
-plot_robot(x_eq(1:3),params,'new_fig',true);
+x_eq_plot = x_eq(1:5);
+
+thetaRamp = asin((params.boardLength/2)/params.trackRadius);
+trackLeftS_init = -params.trackRadius*thetaRamp;
+trackRightS_init = params.trackRadius*thetaRamp;
+stage = params.sim.stage;
+
+switch stage
+    
+    case 'ramp'
+    x_eq = [x_eq; trackLeftS_init; trackRightS_init];
+    x_eq_plot = [x_eq_plot; x_eq(11); x_eq(12)];
+    
+end
+
+plot_robot(x_eq_plot,params,'new_fig',false);
 
 %% Set the initial equilibrium motor torques
 G = conservative_forces(x_eq,params);
@@ -66,12 +81,13 @@ u = u_eq;
 % derive_equations_JR.mlx)
 %   x_dot = [ 0,  I; 0, -M(q_eq)\G_jac(q_eq)]*x + ...
 %       M(q_eq)\[0,0;eye(2)]*u_lin
+x_eq
 M_eq = mass_matrix(x_eq,params);    % mass matrix at equilibrium
 G_jac_eq = derivative_conservative_forces(x_eq,params); % gravitational and spring forces at equilibrium
 % create A and B matrices of linear system
-A = [zeros(3,3),eye(3);-M_eq\G_jac_eq,zeros(3,3)];
-Open_Loop_Poles = eig(A)  % display the unstable open loop poles
-B = [zeros(3,2);M_eq\[0,0;eye(2)]];
+A = [zeros(5,5),eye(5);-M_eq\G_jac_eq,zeros(5,5)];
+% Open_Loop_Poles = eig(A)  % display the unstable open loop poles
+B = [zeros(5,2);M_eq\[0,0;0,0;0,0;eye(2)]];   % check if adding two 0,0 rows is valid for B
 
 % then, set up Q and R matrices using Bryson's Rule
 % I had to play with the weights quite a bit to get something reasonable.
@@ -88,7 +104,7 @@ Poles  % uncomment this line if you want to see the closed loop poles
 
 
 
-% %% Visualize the robot in its initial state
+%% Visualize the robot in its initial state (any initial state, obsolete)
 % 
 % % first five elements are configs (boardX boardY boardTheta bottomLinkTheta topLinkTheta
 % % last five are velocities corresponding
@@ -133,13 +149,13 @@ Poles  % uncomment this line if you want to see the closed loop poles
 %     
 % end
 % 
-% i = 0;
+i = 0;
 %  
 % plot_robot(x_IC_plot, params,'new_fig',false);
 
 
 
-%% Simulate the robot forward in time     
+%% Simulate the robot forward in time (main loop)
 
 % initial conditions
 tnow = 0.0;            
@@ -284,6 +300,90 @@ fprintf('Done!\n');
 %% BELOW HERE ARE THE NESTED FUNCTIONS, ROBOT_DYNAMICS AND ROBOT_EVENTS
 
 %% THEY HAVE ACCESS TO ALL VARIABLES IN MAIN
+
+%% sensor.m %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+% Description:
+%   Computes the sensor values that are sent to the digital controller 
+%
+% Inputs:
+%   x_read: the 12x1 state vector at the time of a read (note that not all
+%   of the state is actually read ... we must determine the sensor readings
+%   from x_read)
+%   u: the control inputs (used here because we have to call
+%   robot_dynamics)
+%
+% Outputs:
+%   y: the sensor values
+
+function [y] = sensor(x_read)
+    
+    % NOTE:  right now, sensors are "perfect" -- no noise or quantization.
+    % That *should* be added!
+    y = zeros(3,1);
+    % assume encoders for spine angle and body motor angle
+    y(1:2) = x_read(2:3);   % theta_s and theta_m
+    % assume gyro for foot angular velocity 
+    y(3) = x_read(4);
+    
+end
+%% end of sensor.m %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%% digital_controller.m %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+% Description:
+%   Computes the torque commands to the two motors 
+%
+% Inputs:
+%   y: the 5x1 output vector at the time of a read 
+%   memory: a struct that holds stored variables
+%
+% Outputs:
+%   u: the two torque commands
+%   memory: a struct that holds stored variables
+
+function [u,memory] = digital_controller(y,Gains,memory)
+    
+    % estimate theta_s_dot and theta_m_dot by backwards difference
+    % differentiation
+    % NOTE: some low pass filtering should probably be added
+    est_theta_s_dot = (y(1) - memory.y(1))/params.control.dt;
+    est_theta_m_dot = (y(2) - memory.y(2))/params.control.dt;
+    
+    % estimate theta_f from IMU readings
+    % two approaches:  1) integrate theta_f_dot;  2) use the measured
+    % accelerations and the knowledge of track shape to estimate it.  This
+    % approach depends on a model, but doesn't have the problem of drift
+    %
+    % Approach 1:  Integrate gyro
+    est1_theta_f = memory.est1_theta_f + y(3)*params.control.dt;
+    
+    % package up the state estimate
+    x = [est1_theta_f;y(1);y(2);y(3);est_theta_s_dot;est_theta_m_dot];
+    
+    % compute the controls
+    error = x - memory.x_eq;
+    u = memory.u_eq - Gains*error;
+    
+    % I've removed saturation to make it work.  If I put this back, things
+    % go haywire after a while.  Probably by increasing the gain a bit, we
+    % could bring this back.  For now, it might be better just to plot
+    % actuator torques
+    
+    % Saturate u (i.e., observe actuator limitations!)
+%     if abs(u(1)) > params.motor.spine.peaktorque
+%         u(1) = params.motor.spine.peaktorque*sign(u(1));
+%     end
+%     if abs(u(2)) > params.motor.body.peaktorque
+%         u(2) = params.motor.body.peaktorque*sign(u(2));
+%     end
+    
+    % Update memory (these are values that the Tiva would store)
+    memory.y = y;
+    memory.est1_theta_f = est1_theta_f;
+    
+end
+%% end of digital_controller.m %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %% robot_dynamics.m %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %
@@ -518,8 +618,7 @@ end
 end
 %% end of change_constraints.m %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-
-%% End of main.m
+%% end of main.m
 end
 
 
