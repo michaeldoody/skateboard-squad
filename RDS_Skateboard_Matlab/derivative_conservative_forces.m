@@ -13,16 +13,16 @@
 
 function [G_jac] = derivative_conservative_forces(x,params)
 
-boardTheta = x(1);
+boardTheta = x(3);
 boardHeight = params.boardHeight/2;  % divide by 2 because jumping robot example measures height to center of mass
 bottomLinkRCoM = params.bottomLinkYCoM;
 bottomLinkMass = params.bottomLinkMass;
-bottomLinkTheta = x(2);
+bottomLinkTheta = x(4);
 bottomLinkHeight = params.bottomLinkHeight;
 g = params.g;
 topLinkRCoM = params.topLinkYCoM;
 topLinkMass = params.topLinkMass;
-topLinkTheta = x(3);
+topLinkTheta = x(5);
 
 G_jac = autogen_derivative_conservative_forces(boardTheta,boardHeight,bottomLinkRCoM,bottomLinkMass,bottomLinkTheta,bottomLinkHeight,g,topLinkRCoM,topLinkMass,topLinkTheta);
 

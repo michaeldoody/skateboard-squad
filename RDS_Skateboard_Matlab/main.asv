@@ -35,56 +35,58 @@ options = odeset('MaxStep',params.sim.dt);
 options = odeset('Events',@robot_events);
 
 %% [FLAT CASE] Set the initial equilibrium pose of the robot 
-x_eq = zeros(10,1);
-% Set foot angle to 30 degrees and spine to -5 degrees
+topLinkThetaEq = sym('topLinkThetaEq');
+x_eq = [0;0;0;0;topLinkThetaEq;0;0;0;0;0];  % [q, dq] = [boardX; boardY; boardTheta; bottomLinkTheta; topLinkTheta; boardDX; boardDY; boardDTheta; bottomLinkDTheta; topLinkDTheta];
+% Set bottom link angle to 15 degrees and top link angle to 30 degrees
 x_eq(3) = pi/12;
 x_eq(4) = -pi/36;
-x_eq(5) = equilibrium_motor_angle(x_eq,params);
 
-% Code for testing equilibrium 
-%dist_up_spine = params.model.geom.body.r*x_eq(3)
-%[FK_com_f,FK_com_s,FK_com_b] = fk_com(x_eq,params);
-%should_be_zero = params.model.dyn.foot.m*FK_com_f(1) + ...
-%    params.model.dyn.spine.m*FK_com_s(1) + ...
-%    params.model.dyn.body.m*FK_com_b(1)
-%x_wheel = wheel_position(x_eq,params)  % should be zero
+G = conservative_forces(x_eq,params);
+G = reshape(G,[5,1]);
 
+    function F = topLinkThetaEqFunc(x)
+        F(1) = double(subs(G(3),topLinkThetaEq,x(1)));
+        F(2) = double(subs(G(4),topLinkThetaEq,x(1)) - x(2));
+        F(3) = double(subs(G(5),topLinkThetaEq,x(1)) - x(3));
+    end
+
+initial_cond = [0,0,0];
+sol = fsolve(@topLinkThetaEqFunc,initial_cond);
+
+x_eq(5) = sol(1);
+u_eq = [sol(2);sol(3)];    % initial command
+u = u_eq;
 
 %% [FLAT CASE] Show the robot in equilibrium
-x_eq_plot = x_eq(1:5);
+x_eq_plot = x_eq(1:5)
+x_eq_plot(5) - do
 
-thetaRamp = asin((params.boardLength/2)/params.trackRadius);
-trackLeftS_init = -params.trackRadius*thetaRamp;
-trackRightS_init = params.trackRadius*thetaRamp;
-stage = params.sim.stage;
+% thetaRamp = asin((params.boardLength/2)/params.trackRadius);
+% trackLeftS_init = -params.trackRadius*thetaRamp;
+% trackRightS_init = params.trackRadius*thetaRamp;
+% stage = params.sim.stage;
+% 
+% switch stage
+%     
+%     case 'ramp'
+%     x_eq = [x_eq; trackLeftS_init; trackRightS_init];
+%     x_eq_plot = [x_eq_plot; x_eq(11); x_eq(12)];
+%     
+% end
 
-switch stage
-    
-    case 'ramp'
-    x_eq = [x_eq; trackLeftS_init; trackRightS_init];
-    x_eq_plot = [x_eq_plot; x_eq(11); x_eq(12)];
-    
-end
-
-plot_robot(x_eq_plot,params,'new_fig',false);
-
-%% [FLAT CASE] Set the initial equilibrium motor torques
-G = conservative_forces(x_eq,params);
-u_eq = [G(2);G(3)];              % initial command
-u = u_eq;
+plot_robot(x_eq_plot,params,'equilibrium state',false);
 
 %% [FLAT CASE] Design the LQR Controller
 % first, find the linearized equations: (more info in
 % derive_equations_JR.mlx)
 %   x_dot = [ 0,  I; 0, -M(q_eq)\G_jac(q_eq)]*x + ...
 %       M(q_eq)\[0,0;eye(2)]*u_lin
-x_eq
 M_eq = mass_matrix(x_eq,params);    % mass matrix at equilibrium
 G_jac_eq = derivative_conservative_forces(x_eq,params); % gravitational and spring forces at equilibrium
 % create A and B matrices of linear system
-A = [zeros(5,5),eye(5);-M_eq\G_jac_eq,zeros(5,5)];
+A = [zeros(5,5),eye(5);-M_eq\G_jac_eq,zeros(5,5)]
 % Open_Loop_Poles = eig(A)  % display the unstable open loop poles
-B = [zeros(5,2);M_eq\[0,0;0,0;0,0;eye(2)]];   % check if adding two 0,0 rows is valid for B
+B = [zeros(5,2);M_eq\[0,0;0,0;0,0;eye(2)]]   % check if adding two 0,0 rows is valid for B
 
 % then, set up Q and R matrices using Bryson's Rule
 % I had to play with the weights quite a bit to get something reasonable.
@@ -92,7 +94,7 @@ B = [zeros(5,2);M_eq\[0,0;0,0;0,0;eye(2)]];   % check if adding two 0,0 rows is 
 % velocities, and max penalty on the actuation (R_lqr).  This effectively
 % turns down the gain, which is important for digital control.  Too much
 % gain, and things get unstable
-Q_lqr = 1e-7*diag([1,1,1,0,0,0]);
+Q_lqr = 1e-7*diag([0,0,1,1,1,0,0,0,0,0]);  % check this
 R_lqr = eye(2);
 % then solve for optimal gains
 [Gains,~,Poles] = lqr(A,B,Q_lqr,R_lqr);
