@@ -230,6 +230,10 @@ case 'ramp'
 
 plot(track_shape(1,:),track_shape(2,:),'-k');
 hold on;
+line([-6,-2],[2,2], 'Color', 'black');
+hold on
+line([2,6],[2,2], 'Color', 'black');
+hold on
 fill(board.curr.corners(1,:),board.curr.corners(2,:),params.viz.colors.board);
 hold on;
 fill(bottomLink.curr.corners(1,:),bottomLink.curr.corners(2,:),params.viz.colors.bottomLink);
@@ -298,7 +302,7 @@ hold off
 
 end
 
-axis(params.viz.axis_lims .* 2);
+axis(params.viz.axis_lims .* 3);
 daspect([1 1 1]) % no distortion
 
 xlabel('$x$');

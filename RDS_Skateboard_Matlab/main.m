@@ -27,9 +27,12 @@ end
 
 params = initial_params;
 params.sim.stage = stage_input;
+global t_rd
+global prevTime_rd
+global prevDirection
 global i
-global prevBottomError
-global prevTopError
+global prevBottomErrorIdle
+global prevTopErrorIdle
 global prevBottomErrorPumping
 global prevTopErrorPumping
 %% Set up events using odeset
@@ -41,20 +44,26 @@ options = odeset('Events',@robot_events);
 % last five are velocities corresponding
 
 events = [];
-prevBottomError = 0;
-prevTopError = 0;
+prevBottomErrorIdle = 0;
+prevTopErrorIdle = 0;
 prevBottomErrorPumping = 0;
 prevTopErrorPumping = 0;
+
+
+t_rd = 0;
+prevTime_rd = 0;
+prevDirection = 1;
+
 
 trick = params.sim.trick;
 
 
-boardX_init = 0;
-boardY_init = 0;
+boardX_init = -2;
+boardY_init = 2;
 boardTheta_init = 0;
 bottomLinkTheta_init = 0;
 topLinkTheta_init = 0;
-boardDX_init = 0; 
+boardDX_init = 2; 
 boardDY_init = 0;
 boardDTheta_init = 0;
 bottomLinkDTheta_init = 0;
@@ -91,6 +100,7 @@ plot_robot(x_IC_plot, params,'new_fig',false);
 
 
 
+
 %% Simulate the robot forward in time     
 
 % initial conditions
@@ -120,7 +130,7 @@ while tnow < params.sim.tfinal
 
     tspan = [tnow params.sim.tfinal];
     
-    
+    tnow
     [tseg, xseg, ~, ~, ie] = ode45(@robot_dynamics, tspan, x_IC, options);
 
     % augment tsim and xsim; renew ICs
@@ -142,6 +152,8 @@ while tnow < params.sim.tfinal
     if tseg(end) < params.sim.tfinal  % termination was triggered by an event
         [x_IC] = change_constraints(x_IC,ie);
     end
+    
+    
     
    
 end
@@ -193,11 +205,11 @@ xlabel('time (sec)');
 hold off
 
 figure
-subplot(1,2,1)
+subplot(2,1,1)
 plot(tsim, xsim(:,5), 'LineWidth', 2);
 ylabel('Top joint angle');
 xlabel('time (sec)');
-subplot(1,2,2)
+subplot(2,1,2)
 plot(tsim, xsim(:,4), 'LineWidth', 2);
 ylabel('Bottom joint angle');
 xlabel('time (sec)');
@@ -263,7 +275,33 @@ fprintf('Done!\n');
 
 function [dx, F] = robot_dynamics(t,x)
 
-% for convenience, define q_dot
+    
+switch stage
+    case 'ramp'
+if t_rd <= 0.1
+    direction = prevDirection;      
+elseif t_rd > 0.1
+    if x(3) > 0 && x(8) > 0
+        direction = 1;
+    elseif x(3) < 0 && x(8) < 0
+        direction = 1;
+    elseif x(3) > 0 && x(8) < 0
+        direction = 0;
+    else
+        direction = 0;
+    end
+    
+    if direction ~= prevDirection
+        t_rd = 0;
+        prevDirection = direction;
+    end  
+    
+end
+end
+
+t_rd = t_rd + (t-prevTime_rd);
+prevTime_rd = t;
+
 
 switch stage
     
@@ -295,11 +333,16 @@ switch trick
     
     case 'pumping'
    
-[bottomMotorTorque, topMotorTorque] = pid_pumping(x(4), x(5));
+[bottomMotorTorque, topMotorTorque] = pid_pumping(x(4), x(5), direction);
 
     case 'manual'
 
 [bottomMotorTorque, topMotorTorque] = pid_manual(x(4), x(5));
+
+    case 'idle'
+        
+[bottomMotorTorque, topMotorTorque] = pid_idle(x(4), x(5));
+
 
 end
 
@@ -315,6 +358,7 @@ Minv = inv_mass_matrix(x,params);
 switch stage
     
     case 'ramp'
+        
         [A,Hessian] = constraint_derivatives_ramp(x,params);
         
     case 'flat'

@@ -61,7 +61,7 @@ addParameter(p, 'video', false);
 % Step 3: parse the inputs:
 parse(p, q_list, F_list, params, varargin{:});
 
-fig_handle = figure('Renderer', 'painters', 'Position', [10 10 900 600]);
+fig_handle = figure('Renderer', 'painters', 'Position', [10 10 974 974]);
 
 if (p.Results.trace_board_com || p.Results.trace_bottomLink_com ...
         || p.Results.trace_topLink_com || p.Results.trace_robot_com)

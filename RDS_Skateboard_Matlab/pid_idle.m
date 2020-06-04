@@ -1,5 +1,5 @@
 function [bottomControl, topControl] = ...
-          pid_manual(bottomAngle, topAngle) 
+          pid_idle(bottomAngle, topAngle) 
       
 global prevBottomErrorIdle
 global prevTopErrorIdle
