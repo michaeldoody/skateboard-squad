@@ -14,8 +14,8 @@ Since each member of the team has different Makefiles, different folders contain
 * hello_world_linux - hello_world for linux
 * simulation - MATLAB code that runs a simulations of the skateboard robot
 * tiva_robeteq - tiva-roboteq interface
-* MATLAB_pumping - MATLAB code for pumping only
-* MATLAB_dropin - MATLAB code for dropping in only
-* MATLAB_manual - MATLAB code for manual only
+* RDS_Skateboard_Matlab - MATLAB code for pumping and idle
+* (insert name here) - MATLAB code for dropping in
+* (insert name here) - MATLAB code for manual
 
 All the MATLAB codes for tricks have options for the three tricks but will only run the specified one correctly (correct gains, will plot for the specified trick)
