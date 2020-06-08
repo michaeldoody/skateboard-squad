@@ -11,4 +11,3 @@ Since each member of the team has different Makefiles, different folders contain
 * encoder_chris - Communication between encoder and Tiva
 * accelerometer_chris - Chris's version of accelerometer data retrieval
 * accelerometer_jake -  Jake's version of accelerometer data retrieval
-* hello_world_*  -  Multiple hello_worlds created by different team members
