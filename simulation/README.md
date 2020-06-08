@@ -6,7 +6,7 @@ Application entry point is `main.m`, which calls (through wrapper functions) dyn
 That means you have to run `derive_equations.m` before you run `main.m` for the first time.
 The workflow is depicted below.
 
-![architecture](/graphics/svg/template_architecture.svg)
+![architecture](https://github.com/michaeldoody/skateboard-squad/blob/master/simulation/graphics/svg/template_architecture.svg)
 
 `derive_equations.m` uses symbolic computation to generate the state-space dynamics of the skateboard robot, which are then exported as MATLAB functions (e.g., `autogen_drift_vector_field.m` and `autogen_control_vector_field.m`).
 
