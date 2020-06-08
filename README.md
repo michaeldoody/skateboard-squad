@@ -13,7 +13,7 @@ Since each member of the team has different Makefiles, different folders contain
 * hello_world - Multiple hello_worlds created by different team members
 * hello_world_linux - hello_world for linux
 * simulation - MATLAB code that runs a simulations of the skateboard robot
-* tiva_robeteq - tiva-roboteq interface
+* tiva_roboteq - tiva-roboteq interface
 * RDS_Skateboard_Matlab - MATLAB code for pumping and idle
 * (insert name here) - MATLAB code for dropping in
 * (insert name here) - MATLAB code for manual
