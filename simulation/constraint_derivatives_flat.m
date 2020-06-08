@@ -1,8 +1,9 @@
-%% constraint_derivatives.m
+%% constraint_derivatives_flat.m
 %
 % Description:
-%   Wrapper function for autogen_constraint_derivatives.m
-%   Computes the constraint jacobian and hessians for the jumping robot.
+%   Wrapper function for autogen_constraint_derivatives_flat.m
+%   Computes the constraint jacobian and hessians for the jumping robot
+%   in the flat stage.
 %
 % Inputs:
 %   x: the state vector, x = [q; q_dot];

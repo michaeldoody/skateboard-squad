@@ -30,10 +30,20 @@ function animate_robot(q_list, F_list, params,varargin)
 % Step 1: instantiate an inputParser:
 p = inputParser;
 
+stage = params.sim.stage;
+
+switch stage
+    
+    case 'ramp'
+        numel_q = 7;
+    case 'flat'
+        numel_q = 5;
+end
+
 % Step 2: create the parsing schema:
 %   2a: required inputs:
 addRequired(p,'robot_config', ...
-    @(q) isnumeric(q_list) && size(q_list,1)==7);
+    @(q) isnumeric(q_list) && size(q_list,1)==numel_q);
 addRequired(p,'constraint_forces', ...
     @(q) isnumeric(F_list) && size(F_list,1)==2);
 addRequired(p,'robot_params', ...
@@ -51,7 +61,7 @@ addParameter(p, 'video', false);
 % Step 3: parse the inputs:
 parse(p, q_list, F_list, params, varargin{:});
 
-fig_handle = figure('Renderer', 'painters', 'Position', [10 10 900 600]);
+fig_handle = figure('Renderer', 'painters', 'Position', [10 10 974 974]);
 
 if (p.Results.trace_board_com || p.Results.trace_bottomLink_com ...
         || p.Results.trace_topLink_com || p.Results.trace_robot_com)
@@ -85,15 +95,8 @@ end
     for i = 1:size(q_list,2)
         
         plot_robot(q_list(:,i),params,'new_fig',false);
-        
+
         q = q_list(:,i); 
-        boardX = q(1);
-        boardY = q(2);
-        boardTheta = q(3);
-        bottomLinkTheta = q(4);
-        topLinkTheta = q(5);
-        [p_l,~,n_l] = track(q(6),params);
-        [p_r,~,n_r] = track(q(7),params);
         F = F_list(:,i);
        
         if tracing
@@ -114,34 +117,34 @@ end
             robot.curr.com.x = [robot.curr.com.x,FK(1,4)];
             robot.curr.com.y = [robot.curr.com.y,FK(2,4)];
             
-            if p.Results.trace_board_com
-                hold on;
-                p1 = plot(board.curr.com.x,board.curr.com.y,'o-',...
-                    'Color',params.viz.colors.boardCoM,...
-                    'MarkerSize',3,'LineWidth',2,...
-                    'MarkerFaceColor',params.viz.colors.boardCoM,...
-                    'MarkerEdgeColor',params.viz.colors.boardCoM);
-                hold off;
-            end
-            if p.Results.trace_bottomLink_com
-                hold on;
-                p2 = plot(bottomLink.curr.com.x,bottomLink.curr.com.y,'o-',...
-                    'Color',params.viz.colors.bottomLinkCoM,...
-                    'MarkerSize',3,'LineWidth',2,...
-                    'MarkerFaceColor',params.viz.colors.bottomLinkCoM,...
-                    'MarkerEdgeColor',params.viz.colors.bottomLinkCoM);
-                hold off;
-            end
-            if p.Results.trace_topLink_com
-                hold on;
-                p3 = plot(topLink.curr.com.x,topLink.curr.com.y,'o-',...
-                    'Color',params.viz.colors.topLink,...
-                    'MarkerSize',3,'LineWidth',2,...
-                    'MarkerFaceColor',params.viz.colors.topLinkCoM,...
-                    'MarkerEdgeColor',params.viz.colors.topLinkCoM);
-                hold off;
-            end
-            if p.Results.trace_robot_com
+%             if p.Results.trace_board_com
+%                 hold on;
+%                 p1 = plot(board.curr.com.x,board.curr.com.y,'o-',...
+%                     'Color',params.viz.colors.boardCoM,...
+%                     'MarkerSize',3,'LineWidth',2,...
+%                     'MarkerFaceColor',params.viz.colors.boardCoM,...
+%                     'MarkerEdgeColor',params.viz.colors.boardCoM);
+%                 hold off;
+%             end
+%             if p.Results.trace_bottomLink_com
+%                 hold on;
+%                 p2 = plot(bottomLink.curr.com.x,bottomLink.curr.com.y,'o-',...
+%                     'Color',params.viz.colors.bottomLinkCoM,...
+%                     'MarkerSize',3,'LineWidth',2,...
+%                     'MarkerFaceColor',params.viz.colors.bottomLinkCoM,...
+%                     'MarkerEdgeColor',params.viz.colors.bottomLinkCoM);
+%                 hold off;
+%             end
+%             if p.Results.trace_topLink_com
+%                 hold on;
+%                 p3 = plot(topLink.curr.com.x,topLink.curr.com.y,'o-',...
+%                     'Color',params.viz.colors.topLink,...
+%                     'MarkerSize',3,'LineWidth',2,...
+%                     'MarkerFaceColor',params.viz.colors.topLinkCoM,...
+%                     'MarkerEdgeColor',params.viz.colors.topLinkCoM);
+%                 hold off;
+%             end
+             if p.Results.trace_robot_com
                 hold on;
                 p4 = plot(robot.curr.com.x,robot.curr.com.y,'o-',...
                     'Color',params.viz.colors.robotCoM,...
@@ -151,9 +154,9 @@ end
                 hold off;
             end
             
-        legend([p1 p2 p3 p4], 'board CoM', 'bottom Link CoM', 'top link CoM',...
-        'aggregate CoM','Location', 'northeastoutside', ...
-        'FontSize',10);
+%         legend([p1 p2 p3 p4], 'board CoM', 'bottom Link CoM', 'top link CoM',...
+%         'aggregate CoM','Location', 'northeastoutside', ...
+%         'FontSize',10);
             
         end
         
@@ -199,14 +202,13 @@ wheels.curr.corners(2,:) = wheels.curr.corners(2,:) + params.wheelRadius;
                
       legend([p1 p2 p3 p4 p5 p6], 'board CoM', 'bottom Link CoM', 'top link CoM',...
       'aggregate CoM', 'left constraint', 'right constraint', ...
-       'Location', 'southeast', 'FontSize',10);       
+       'Location', 'southeast', 'FontSize',10);  
+        end
     
         if p.Results.video 
             M(i) = getframe;
             writeVideo(v,M(i));
         end
-    end
-
     end
     
     if p.Results.video

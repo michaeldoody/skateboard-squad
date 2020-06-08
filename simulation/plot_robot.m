@@ -230,6 +230,10 @@ case 'ramp'
 
 plot(track_shape(1,:),track_shape(2,:),'-k');
 hold on;
+line([-6,-2],[2,2], 'Color', 'black');
+hold on
+line([2,6],[2,2], 'Color', 'black');
+hold on
 fill(board.curr.corners(1,:),board.curr.corners(2,:),params.viz.colors.board);
 hold on;
 fill(bottomLink.curr.corners(1,:),bottomLink.curr.corners(2,:),params.viz.colors.bottomLink);
@@ -240,29 +244,27 @@ circle(board.curr.corners(1,3), board.curr.corners(2,3), params.wheelRadius, [0.
 hold on
 circle(board.curr.corners(1,4), board.curr.corners(2,4), params.wheelRadius, [0.25, 0.25, 0.25]);
 
-p1 = plot(board.curr.com.x, board.curr.com.y,'o','MarkerSize',10,...
-    'MarkerFaceColor',params.viz.colors.boardCoM);
-hold on
-p2 = plot(bottomLink.curr.com.x, bottomLink.curr.com.y,'o','MarkerSize',10,...
-    'MarkerFaceColor',params.viz.colors.bottomLinkCoM);
-hold on
-p3 = plot(topLink.curr.com.x, topLink.curr.com.y, 'o', 'MarkerSize', 10,...
-    'MarkerFaceColor',params.viz.colors.topLinkCoM);
-hold on;
+% p1 = plot(board.curr.com.x, board.curr.com.y,'o','MarkerSize',10,...
+%     'MarkerFaceColor',params.viz.colors.boardCoM);
+% hold on
+% p2 = plot(bottomLink.curr.com.x, bottomLink.curr.com.y,'o','MarkerSize',10,...
+%     'MarkerFaceColor',params.viz.colors.bottomLinkCoM);
+% hold on
+% p3 = plot(topLink.curr.com.x, topLink.curr.com.y, 'o', 'MarkerSize', 10,...
+%     'MarkerFaceColor',params.viz.colors.topLinkCoM);
+% hold on;
 p4 = plot(robot.curr.com.x, robot.curr.com.y, 'o', 'MarkerSize', 10,...
     'MarkerFaceColor','cyan');
 hold on
-plot(pLeftWheel(1),pLeftWheel(2),'o','MarkerSize',6,...
-    'MarkerFaceColor',params.viz.colors.trackers,...
-    'MarkerEdgeColor',params.viz.colors.trackers);
-hold on
+% plot(pLeftWheel(1),pLeftWheel(2),'o','MarkerSize',6,...
+%     'MarkerFaceColor',params.viz.colors.trackers,...
+%     'MarkerEdgeColor',params.viz.colors.trackers);
+% hold on
 plot(pRightWheel(1),pRightWheel(2),'o','MarkerSize',6,...
     'MarkerFaceColor',params.viz.colors.trackers,...
     'MarkerEdgeColor',params.viz.colors.trackers);
 hold on
-legend([p1 p2 p3 p4], 'board CoM', 'bottom Link CoM', 'top link CoM',...
-        'aggregate CoM','Location', 'southeast', ...
-        'FontSize',10);
+ legend([p4], 'robot CoM', 'FontSize',10);
 hold off
 
 case 'flat'
@@ -298,7 +300,7 @@ hold off
 
 end
 
-axis(params.viz.axis_lims .* 2);
+axis(params.viz.axis_lims .* 3);
 daspect([1 1 1]) % no distortion
 
 xlabel('$x$');
